@@ -28,5 +28,25 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+        shell: python
         run: |
-          python kirim_tes.py
+          import os
+          import requests
+
+          TOKEN = os.getenv('TELEGRAM_TOKEN')
+          CHAT_ID = os.getenv('CHAT_ID')
+
+          if not TOKEN or not CHAT_ID:
+              print("❌ ERROR: TELEGRAM_TOKEN atau CHAT_ID di GitHub Secrets kosong!")
+              exit(1)
+
+          url = f"https://telegram.com{TOKEN}/sendMessage"
+          payload = {
+              "chat_id": CHAT_ID,
+              "text": "🎉 BERHASIL! GitHub Actions Anda sekarang sudah bisa mengirim pesan ke Telegram."
+          }
+
+          print("Sedang mencoba mengirim pesan...")
+          response = requests.post(url, json=payload)
+          print(f"Status Code: {response.status_code}")
+          print(f"Respon Server: {response.text}")
