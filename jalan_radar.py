@@ -4,14 +4,12 @@ import re
 import time
 
 # =====================================================================
-# DATA KREDENSIAL UTUH (SUDAH DIKUNCI DAN VALID)
+# FIXED TOTAL: TOKEN ASLI SEGAR ANDA SUDAH SAYA SUNTIKKAN DI SINI!
 # =====================================================================
-TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAE7fePUPB9wvjb7t4ht66G-UIf1E3tvCRE"
+TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAFFLsu_Nh6-WCuZbb5F73cts-VUbWBaC5A"
 CHAT_ID_LANGSUNG = "8690860489"
+# =====================================================================
 
-# =====================================================================
-# KUNCI SUKSES: 618 SAHAM SYARIAH SUDAH DISATUKAN KEMBALI DI SINI!
-# =====================================================================
 DAFTAR_SAHAM_SYARIAH = [
     "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", "AKRA", "ARII", "ATLA", "BBRM", "BESS", "BOAT", "BSML", "BSSR", "BULL", "BUMI", "BYAN", "CANI", "CGAS", "COAL", "DEWA",
     "DSSA", "DWGL", "ELSA", "ENRG", "FIRE", "GEMS", "HRUM", "IATA", "INDY", "ITMA", "ITMG", "KKGI", "KOPI", "MAHA", "MBAP", "MCOL", "MEDC", "MKAP", "MYOH",
@@ -19,7 +17,7 @@ DAFTAR_SAHAM_SYARIAH = [
     "ADMG", "AGII", "AKPI", "ALDO", "ALKA", "ANTM", "APLI", "ARCI", "ASPR", "AVIA", "AYLS", "BATR", "BLES", "BMSR", "BRMS", "BRNA", "CHEM", "CITA", "CLPI",
     "CTBN", "DGWG", "DKFT", "EKAD", "EPAC", "ESIP", "ESSA", "FASW", "FPNI", "FWCT", "GDST", "GGRP", "IFII", "IFSH", "IGAR", "INCI", "INKP", "INTD", "INTP", "IPOL", "ISSP", "KDSI", "KKES",
     "LMSH", "LTLS", "MBMA", "MDKA", "MDKI", "MINE", "NICE", "NICL", "NIKL", "OBMD", "OKAS", "PACK", "PBID", "PDPP", "PICO", "PPRI",
-    "PSAB", "PTMR", "SAMF", "SBMA", "SMBR", "SMCB", "SMGA", "SMGR", "SMKL", "SMLE", "SOLA", "SPMA", "SulI", "TALF", "TBMS", "TINS", "TIRT", "TKIM", "TPIA", "TRST", "UNIC", "WTON", "YPAS",
+    "PSAB", "PTMR", "SAMF", "SBMA", "SMBR", "SMCB", "SMGA", "SMGR", "SMKL", "SMLE", "SOLA", "SPMA", "SULI", "TALF", "TBMS", "TINS", "TIRT", "TKIM", "TPIA", "TRST", "UNIC", "WTON", "YPAS",
     "AMFG", "AMIN", "APII", "ARNA", "ASGR", "BINO", "BLUE", "CAKK", "CCSI", "CRSN", "DYAN", "FOLK", "GPSO", "HEXA", "HOPE", "HYGN", "ICON", "IKAI", "IKBI", "IMPC", "JECC", "JTPE", "KBLI",
     "KBLM", "KIAS", "KING", "KOBX", "KOIN", "KONI", "KUAS", "LION", "MARK", "MFMI", "MHKI", "MLIA", "MUTU", "NAIK", "NTBK", "PADA", "PTMP", "SCCO", "SKRN", "SMIL", "SOSS", "SPTO", "TIRA",
     "TOTO", "UNTR", "VISI", "VOKS", "WIDI", "AALI", "ADES", "AGAR", "AISA", "AMMS", "ASHA", "AYAM", "BISI", "BOBA", "BRRC", "BUAH", "BUDI", "BWPT", "CAMP", "CEKA", "CLEO", "CMRY", "CPIN", "CPRO",
@@ -59,7 +57,6 @@ def cek_sideways_yahoo(ticker_clean):
     url = f"https://yahoo.com{ticker_jk}?range=30d&interval=1d"
     headers = {'User-Agent': 'Mozilla/5.0'}
     
-    # Jeda aman 0.4 detik agar tidak diblokir Yahoo Finance
     time.sleep(0.4)
     
     try:
@@ -96,13 +93,12 @@ def cek_sideways_yahoo(ticker_clean):
         harga_sekarang = prices[-1]
         bandwidth_sekarang = (upper_band - lower_band) / ma20 if ma20 != 0 else 0
         
-        # Saringan real trading diperketat ke 0.15 agar hanya saham sideways keras kualitas A yang masuk radar
-        if bandwidth_sekarang <= 0.15: 
+        if bandwidth_sekarang <= 0.35: 
             volume_sekarang = volumes[-1] if volumes else 0
             rata_volume = sum(volumes[-20:]) / 20 if volumes else 1
             
             status_vol = "Volume Mengering"
-            if volume_sekarang > (rata_volume * 1.3):
+            if volume_sekarang > (rata_volume * 1.2):
                 status_vol = "VOLUME SPIKE! Bandar Masuk!"
                 
             pesan = (
