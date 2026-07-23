@@ -5,7 +5,7 @@ import requests
 
 def hitung_bollinger_squeeze(df, periode=20, std_dev=2):
     """
-    Menghitung penyempitan Bollinger Bands untuk mendeteksi fase sideways.
+    Calculates Bollinger Bands squeeze to detect consolidation/sideways phases.
     """
     if len(df) < periode:
         return None
@@ -21,7 +21,7 @@ def hitung_bollinger_squeeze(df, periode=20, std_dev=2):
 
 def kirim_radar_telegram(pesan):
     """
-    Mengirimkan teks notifikasi langsung ke akun/grup Telegram Anda.
+    Sends radar alert notifications directly to your Telegram bot.
     """
     token = os.environ.get("TELEGRAM_TOKEN")
     chat_id = os.environ.get("CHAT_ID")
