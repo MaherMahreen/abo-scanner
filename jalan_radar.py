@@ -6,7 +6,7 @@ import time
 # =====================================================================
 # DATA KREDENSIAL UTUH (SUDAH DIKUNCI DAN VALID)
 # =====================================================================
-TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAFFLsu_Nh6-WCuZbb5F73cts-VUbWBaC5A"
+TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAHy8NYFG6wL7PaZ6FbYo-kElMRcH6YuRx4"
 CHAT_ID_LANGSUNG = "8690860489"
 # =====================================================================
 
