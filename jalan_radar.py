@@ -6,7 +6,7 @@ df = pd.read_csv("saham_syariah.csv")
 
 print("Jumlah baris:", len(df))
 
-print("\nNama kolom:")
+print("\nKolom:")
 print(df.columns.tolist())
 
 print("\n5 data pertama:")
