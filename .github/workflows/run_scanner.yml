@@ -3,50 +3,51 @@ name: Tes Koneksi Telegram
 on:
   workflow_dispatch:
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
-
 jobs:
   tes-telegram:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      - name: Install Dependencies
+      - name: Install Requests
         run: |
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Jalankan Tes Kirim Pesan
+      - name: Kirim Pesan Telegram
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        shell: python
         run: |
+          python << EOF
           import os
           import requests
 
-          TOKEN = os.getenv('TELEGRAM_TOKEN')
-          CHAT_ID = os.getenv('CHAT_ID')
+          TOKEN = os.getenv("TELEGRAM_TOKEN")
+          CHAT_ID = os.getenv("CHAT_ID")
+
+          print("TOKEN ditemukan:", TOKEN is not None)
+          print("CHAT_ID ditemukan:", CHAT_ID is not None)
 
           if not TOKEN or not CHAT_ID:
-              print("❌ ERROR: TELEGRAM_TOKEN atau CHAT_ID di GitHub Secrets kosong!")
-              exit(1)
+              raise Exception("TELEGRAM_TOKEN atau CHAT_ID belum dibuat di GitHub Secrets")
 
-          url = f"https://telegram.com{TOKEN}/sendMessage"
+          url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+
           payload = {
               "chat_id": CHAT_ID,
-              "text": "🎉 BERHASIL! GitHub Actions Anda sekarang sudah bisa mengirim pesan ke Telegram."
+              "text": "✅ TEST BERHASIL!\nGitHub Actions berhasil mengirim pesan ke Telegram."
           }
 
-          print("Sedang mencoba mengirim pesan...")
           response = requests.post(url, json=payload)
-          print(f"Status Code: {response.status_code}")
-          print(f"Respon Server: {response.text}")
+
+          print("Status Code:", response.status_code)
+          print("Response:", response.text)
+          EOF
