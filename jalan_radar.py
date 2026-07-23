@@ -64,9 +64,11 @@ def jalankan_pemindaian():
             if df_analisis is None:
                 continue
             bandwidth_sekarang = df_analisis['Bandwidth'].iloc[-1]
-            if bandwidth_sekarang <= 0.05 or bandwidth_sekarang == min_bandwidth_20h:
+            harga_sekarang = df_analisis['Close'].iloc[-1]
             min_bandwidth_20h = df_analisis['Bandwidth'].tail(20).min()
-            if bandwidth_sekarang <= 0.05 or bandwidth_sekarang == min_bandwidth_20h:
+            
+            # Kriteria uji coba yang sudah dilonggarkan spasi lurus
+            if bandwidth_sekarang <= 0.25 or bandwidth_sekarang == min_bandwidth_20h:
                 volume_sekarang = df_analisis['Volume'].iloc[-1]
                 rata_volume_20h = df_analisis['Volume'].tail(20).mean()
                 status_vol = "Volume Mengering"
