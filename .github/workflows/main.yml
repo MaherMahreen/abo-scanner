@@ -1,0 +1,28 @@
+name: ABO Scanner Telegram
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-scanner:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil kode dari repository
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install kebutuhan
+        run: |
+          pip install requests
+
+      - name: Jalankan ABO Scanner
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python abo_scanner.py
