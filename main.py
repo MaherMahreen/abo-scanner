@@ -1,123 +1,120 @@
 import os
-import pandas as pd
-import yfinance as yf
 import requests
+import re
+import time
 
-def hitung_bollinger_squeeze(df, periode=20, std_dev=2):
-    """
-    Calculates Bollinger Bands squeeze to detect consolidation/sideways phases.
-    """
-    if len(df) < periode:
-        return None
-        
-    df['MA20'] = df['Close'].rolling(window=periode).mean()
-    df['STD20'] = df['Close'].rolling(window=periode).std()
-    
-    df['Upper'] = df['MA20'] + (std_dev * df['STD20'])
-    df['Lower'] = df['MA20'] - (std_dev * df['STD20'])
-    
-    df['Bandwidth'] = (df['Upper'] - df['Lower']) / df['MA20']
-    return df
+# =====================================================================
+# FIXED TOTAL: NAMA VARIABEL SUDAH SAMA PERSIS DENGAN FILE LAIN!
+# =====================================================================
+TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAFFLsu_Nh6-WCuZbb5F73cts-VUbWBaC5A"
+CHAT_ID_LANGSUNG = "8690860489"
+# =====================================================================
 
 def kirim_radar_telegram(pesan):
-    """
-    Sends radar alert notifications directly to your Telegram bot.
-    """
-    token = os.environ.get("TELEGRAM_TOKEN")
-    chat_id = os.environ.get("CHAT_ID")
-    
-    if not token or not chat_id:
-        print("Telegram configuration error: Secrets are missing.")
-        return False
-        
-    url = f"https://telegram.org{token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": pesan,
-        "parse_mode": "Markdown"
-    }
-    
+    # Menggunakan nama variabel TELEGRAM_TOKEN_LANGSUNG secara konsisten
+    url = f"https://telegram.org{TELEGRAM_TOKEN_LANGSUNG}/sendMessage"
+    payload = {"chat_id": str(CHAT_ID_LANGSUNG), "text": pesan, "parse_mode": "Markdown"}
     try:
         response = requests.post(url, json=payload, timeout=10)
         return response.status_code == 200
     except Exception as e:
-        print(f"Failed to connect to Telegram API: {e}")
+        print(f"Gagal kirim Telegram: {e}")
         return False
 
-def muat_daftar_saham():
+def muat_saham_dari_csv():
     nama_file = "saham_syariah.csv"
     if not os.path.exists(nama_file):
-        print(f"⚠️ Warning: {nama_file} not found! Using fallback list.")
-        return ["BBRI.JK", "TLKM.JK", "ASII.JK"]
-        
+        print(f"❌ File {nama_file} tidak ditemukan!")
+        return []
+    
+    clean_tickers = []
     try:
-        df_saham = pd.read_csv(nama_file)
-        print(f"📊 Columns detected in CSV: {list(df_saham.columns)}")
-        
-        kolom_utama = df_saham.columns[0]
-        list_saham = df_saham[kolom_utama].dropna().astype(str).tolist()
-        
-        list_clean = []
-        for s in list_saham:
-            s_clean = s.strip().upper()
-            if s_clean == "" or "KODE" in s_clean or "TICKER" in s_clean:
-                continue
-            if not s_clean.endswith(".JK"):
-                s_clean = f"{s_clean}.JK"
-            list_clean.append(s_clean)
+        with open(nama_file, "r") as f:
+            lines = f.readlines()
             
-        print(f"✅ Successfully loaded {len(list_clean)} stock tickers from column '{kolom_utama}'")
-        return list_clean
+        for line in lines:
+            ticker = line.strip().upper()
+            if ticker == "" or ticker == "KODE" or ticker == "TICKER":
+                continue
+            clean_tickers.append(ticker)
+            
+        print(f"✅ Berhasil memuat {len(clean_tickers)} saham dari {nama_file}")
+        return clean_tickers
     except Exception as e:
-        print(f"❌ Failed to read CSV file: {e}")
-        return ["BBRI.JK", "TLKM.JK", "ASII.JK"]
+        print(f"❌ Gagal membaca file CSV: {e}")
+        return []
 
-def jalankan_pemindaian():
-    daftar_saham = muat_daftar_saham()
-    if not daftar_saham:
-        print("❌ No stocks available to process.")
-        return
+def cek_sideways_yahoo(ticker_clean):
+    ticker_jk = f"{ticker_clean}.JK"
+    url = f"https://yahoo.com{ticker_jk}?range=30d&interval=1d"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    
+    # Jeda aman anti-blokir bursa
+    time.sleep(0.4)
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            return
+            
+        teks_data = response.text
         
-    print("🚀 Starting technical calculation process...")
-    for kode_saham in daftar_saham:
-        try:
-            ticker = yf.Ticker(kode_saham)
-            data_historis = ticker.history(period="60d")
+        pola_harga = r'"close":\[([^[\]]+)\]'
+        pola_volume = r'"volume":\[([^[\]]+)\]'
+        
+        cari_harga = re.search(pola_harga, teks_data)
+        cari_volume = re.search(pola_volume, teks_data)
+        
+        if not cari_harga or not cari_volume:
+            return
             
-            if data_historis.empty or len(data_historis) < 20:
-                continue
-                
-            df_analisis = hitung_bollinger_squeeze(data_historis)
-            if df_analisis is None:
-                continue
-                
-            bandwidth_sekarang = df_analisis['Bandwidth'].iloc[-1]
-            harga_sekarang = df_analisis['Close'].iloc[-1]
-            min_bandwidth_20h = df_analisis['Bandwidth'].tail(20).min()
+        prices = [float(x) for x in cari_harga.group(1).split(',') if x != 'null']
+        volumes = [float(v) for v in cari_volume.group(1).split(',') if v != 'null']
+        
+        if len(prices) < 20:
+            return
             
-            if bandwidth_sekarang <= 0.05 or bandwidth_sekarang == min_bandwidth_20h:
-                volume_sekarang = df_analisis['Volume'].iloc[-1]
-                rata_volume_20h = df_analisis['Volume'].tail(20).mean()
+        close_20d = prices[-20:]
+        ma20 = sum(close_20d) / 20
+        
+        variance = sum((x - ma20) ** 2 for x in close_20d) / 20
+        std_dev = variance ** 0.5
+        
+        upper_band = ma20 + (2 * std_dev)
+        lower_band = ma20 - (2 * std_dev)
+        
+        harga_sekarang = prices[-1]
+        bandwidth_sekarang = (upper_band - lower_band) / ma20 if ma20 != 0 else 0
+        
+        # Saringan real trading ketat 15% (0.15)
+        if bandwidth_sekarang <= 0.15: 
+            volume_sekarang = volumes[-1] if volumes else 0
+            rata_volume = sum(volumes[-20:]) / 20 if volumes else 1
+            
+            status_vol = "Volume Mengering"
+            if volume_sekarang > (rata_volume * 1.3):
+                status_vol = "VOLUME SPIKE! Bandar Masuk!"
                 
-                status_vol = "Volume Mengering (Konsolidasi Berlanjut)"
-                if volume_sekarang > (rata_volume_20h * 1.5):
-                    status_vol = "🔥 VOLUME SPIKE! Bandar masuk, siap terbang!"
-                
-                clean_name = kode_saham.replace(".JK", "")
-                pesan = (
-                    f"🚨 *ABO RADAR: SAHAM SIDEWAYS* 🚨\n\n"
-                    f"Saham: *{clean_name}*\n"
-                    f"Harga: Rp {int(harga_sekarang)}\n"
-                    f"Bandwidth: {bandwidth_sekarang*100:.2f}%\n"
-                    f"Kondisi: {status_vol}\n\n"
-                    f"💡 _Rekomendasi: Pantau harga breakout Upper Band di Rp {int(df_analisis['Upper'].iloc[-1])}_"
-                )
-                
-                print(f"🎯 Signal found: {clean_name}")
-                kirim_radar_telegram(pesan)
-                
-        except Exception as err:
-            print(f"⚠️ Error reading ticker {kode_saham}: {err}")
+            pesan = (
+                f"🚨 *ABO RADAR: SAHAM SIDEWAYS* 🚨\n\n"
+                f"Saham Syariah: *{ticker_clean}*\n"
+                f"Harga Terakhir: Rp {int(harga_sekarang)}\n"
+                f"Bandwidth: {bandwidth_sekarang*100:.2f}%\n"
+                f"Kondisi: {status_vol}\n\n"
+                f"💡 _Breakout Target: Rp {int(upper_band)}_"
+            )
+            print(f"🎯 Sinyal Ditemukan: {ticker_clean}")
+            kirim_radar_telegram(pesan)
+            
+    except Exception as e:
+        print(f"Skip {ticker_clean}: {e}")
 
 if __name__ == "__main__":
-    jalankan_pemindaian()
+    print("Memicu jembatan notifikasi...")
+    kirim_radar_telegram("🤖 *ABO Scanner CSV Aktif!* Memulai penyaringan aman pada 618 saham syariah...")
+    
+    daftar_saham = muat_saham_dari_csv()
+    for ticker in daftar_saham:
+        cek_sideways_yahoo(ticker)
+        
+    kirim_radar_telegram("🏁 Pemindaian Selesai. Semua saham syariah selesai disaring.")
