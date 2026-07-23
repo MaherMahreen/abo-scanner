@@ -2,9 +2,11 @@ import os
 import requests
 import re
 import time
-from saham_syariah import DAFTAR_SAHAM_SYARIAH
-from score import ScoreEngine
+from score import ScoreEngine  # Memanggil mesin skor Anda dari score.py
 
+# =====================================================================
+# DATA KREDENSIAL UTUH (SUDAH DIKUNCI DAN VALID DENGAN TOKEN ANDA)
+# =====================================================================
 TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAHy8NYFG6wL7PaZ6FbYo-kElMRcH6YuRx4"
 CHAT_ID_LANGSUNG = "8690860489"
 
@@ -35,6 +37,31 @@ def hitung_ema(prices, periode):
     for price in prices[periode:]:
         ema_val = (price * k) + (ema_val * (1 - k))
     return ema_val
+
+def muat_saham_dari_csv():
+    """Membaca file saham_syariah.csv polos teks ke bawah secara otomatis"""
+    nama_file = "saham_syariah.csv"
+    if not os.path.exists(nama_file):
+        print(f"❌ File {nama_file} tidak ditemukan!")
+        return []
+    
+    clean_tickers = []
+    try:
+        with open(nama_file, "r") as f:
+            lines = f.readlines()
+            
+        for line in lines:
+            ticker = line.strip().upper()
+            # Lewati baris judul atau baris kosong tak sengaja
+            if ticker == "" or ticker == "KODE" or ticker == "TICKER":
+                continue
+            clean_tickers.append(ticker)
+            
+        print(f"✅ Berhasil memuat {len(clean_tickers)} saham dari {nama_file}")
+        return clean_tickers
+    except Exception as e:
+        print(f"❌ Gagal membaca file CSV teks: {e}")
+        return []
 
 def cek_sideways_dan_sinyal(ticker_clean, engine):
     ticker_jk = f"{ticker_clean}.JK"
@@ -68,12 +95,12 @@ def cek_sideways_dan_sinyal(ticker_clean, engine):
         harga_sekarang = prices[-1]
         volume_sekarang = volumes[-1]
         
-        # 1. EVALUASI ATURAN TRANSAKSI (Filter Likuiditas Rp 500 Juta)
+        # 1. Filter Likuiditas Rp 500 Juta
         nilai_transaksi_hari_ini = harga_sekarang * volume_sekarang
         if nilai_transaksi_hari_ini < MIN_VALUE_TRANSACTION:
-            return None # Lempar senyap jika sahamnya tidak likuid/saham tidur
+            return None 
             
-        # Perhitungan indikator dasar Bollinger Bands
+        # Perhitungan Bollinger Bands
         close_20d = prices[-20:]
         ma20 = sum(close_20d) / 20
         variance = sum((x - ma20) ** 2 for x in close_20d) / 20
@@ -82,32 +109,32 @@ def cek_sideways_dan_sinyal(ticker_clean, engine):
         lower_band = ma20 - (2 * std_dev)
         bandwidth_sekarang = (upper_band - lower_band) / ma20 if ma20 != 0 else 0
         
-        # 2. EVALUASI ATURAN SIDEWAYS (Maks 15%)
+        # 2. Aturan Sideways (Maks 15%)
         if bandwidth_sekarang <= 0.08:
             engine.tambah(35, "Sideways Super Ketat (Squeeze Ekstrem)")
         elif bandwidth_sekarang <= SIDEWAYS_RANGE:
             engine.tambah(20, "Sideways Normal (Konsolidasi)")
         else:
-            return None # Lewati jika volatilitas melebar kencang
+            return None 
             
-        # 3. EVALUASI ATURAN BREAKOUT
+        # 3. Aturan Breakout
         harga_tertinggi_bursa = max(prices[-(BREAKOUT_LOOKBACK+1):-1])
         if harga_sekarang > harga_tertinggi_bursa:
             engine.tambah(25, "BREAKOUT HIGH! Menembus Resistance Kuat")
         elif harga_sekarang >= upper_band:
             engine.tambah(15, "Breakout Upper Band (Awal Konfirmasi Terbang)")
             
-        # 4. EVALUASI ATURAN VOLUME SPIKE
+        # 4. Aturan Volume Spike
         rata_volume_20h = sum(volumes[-20:]) / 20
         if volume_sekarang > (rata_volume_20h * 2.0):
             engine.tambah(25, "VOLUME SPIKE EKSTREM! Bandar Borong Besar-Besaran")
         elif volume_sekarang > (rata_volume_20h * VOLUME_SPIKE_RATIO):
             engine.tambah(15, "Volume Spike Normal (Akumulasi Awal)")
             
-        # 5. EVALUASI ATURAN EMA TREND (EMA Cepat > EMA Lambat)
+        # 5. Aturan EMA Trend (EMA Cepat > EMA Lambat)
         ema20 = hitung_ema(prices, 20)
-        ema30 = hitung_ema(prices, 30) # Cadangan filter tren lambat
-        if ema20 > b"" and ema20 > ema30:
+        ema30 = hitung_ema(prices, 30) 
+        if ema20 > 0 and ema20 > ema30:
             engine.tambah(15, "EMA Golden Cross (Tren Bullish Menguat)")
             
         data_skor = engine.hasil()
@@ -124,16 +151,17 @@ def cek_sideways_dan_sinyal(ticker_clean, engine):
         return None
 
 if __name__ == "__main__":
-    kirim_radar_telegram("🤖 *ABO Scanner Pro v1.5 Online!* Memulai pemindaian massal menggunakan Signal & Score Engine gabungan...")
+    kirim_radar_telegram("🤖 *ABO Scanner Pro v1.5 Online!* Memulai pemindaian massal menggunakan data file CSV...")
     
     engine = ScoreEngine()
     hasil_scan = []
     
-    daftar_saham = muat_saham_dari_csv() if 'muat_saham_dari_csv' in locals() else DAFTAR_SAHAM_SYARIAH
+    # Membaca file CSV teks polos isi 618 saham Anda
+    daftar_saham = muat_saham_dari_csv()
     print(f"Memulai kalkulasi {len(daftar_saham)} saham syariah...")
     
     for ticker in daftar_saham:
-        res = cek_sideways_and_sinyal(ticker.strip().upper(), engine)
+        res = cek_sideways_dan_sinyal(ticker.strip().upper(), engine)
         if res is not None:
             hasil_scan.append(res)
             
