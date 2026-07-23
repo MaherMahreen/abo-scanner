@@ -7,50 +7,44 @@ from telegram import kirim_radar_telegram
 def muat_daftar_saham():
     nama_file = "saham_syariah.csv"
     if not os.path.exists(nama_file):
-        print(f"⚠️ Peringatan: File {nama_file} tidak ditemukan! Menggunakan daftar cadangan.")
+        print(f"⚠️ Warning: {nama_file} not found! Using fallback list.")
         return ["BBRI.JK", "TLKM.JK", "ASII.JK"]
         
     try:
         df_saham = pd.read_csv(nama_file)
+        print(f"📊 Columns detected in CSV: {list(df_saham.columns)}")
         
-        # DEBUG: Cetak daftar kolom yang terbaca agar terlihat jika ada typo/salah nama kolom
-        print(f"📊 Kolom yang terdeteksi di CSV Anda: {list(df_saham.columns)}")
-        
-        # Otomatis mengambil kolom pertama apa pun namanya
         kolom_utama = df_saham.columns[0]
         list_saham = df_saham[kolom_utama].dropna().astype(str).tolist()
         
         list_clean = []
         for s in list_saham:
             s_clean = s.strip().upper()
-            # Hapus imbuhan pembatas atau spasial jika tidak sengaja terbaca
             if s_clean == "" or "KODE" in s_clean or "TICKER" in s_clean:
                 continue
             if not s_clean.endswith(".JK"):
                 s_clean = f"{s_clean}.JK"
             list_clean.append(s_clean)
             
-        print(f"✅ Berhasil memuat {len(list_clean)} kode saham dari kolom '{kolom_utama}'")
+        print(f"✅ Successfully loaded {len(list_clean)} stock tickers from column '{kolom_utama}'")
         return list_clean
     except Exception as e:
-        print(f"❌ Gagal membaca file CSV: {e}")
+        print(f"❌ Failed to read CSV file: {e}")
         return ["BBRI.JK", "TLKM.JK", "ASII.JK"]
 
 def jalankan_pemindaian():
     daftar_saham = muat_daftar_saham()
     if not daftar_saham:
-        print("❌ Tidak ada saham yang bisa diproses.")
+        print("❌ No stocks available to process.")
         return
         
-    print("🚀 Memulai proses kalkulasi teknikal...")
+    print("🚀 Starting technical calculation process...")
     for kode_saham in daftar_saham:
         try:
             ticker = yf.Ticker(kode_saham)
-            # Batasi pengambilan data awal agar tidak terkena limit pembatasan akses Yahoo
             data_historis = ticker.history(period="60d")
             
             if data_historis.empty or len(data_historis) < 20:
-                # Lewati senyap jika ticker kosong/tidak valid di Yahoo Finance
                 continue
                 
             df_analisis = hitung_bollinger_squeeze(data_historis)
@@ -79,11 +73,11 @@ def jalankan_pemindaian():
                     f"💡 _Rekomendasi: Pantau harga breakout Upper Band di Rp {int(df_analisis['Upper'].iloc[-1])}_"
                 )
                 
-                print(f"🎯 Sinyal ditemukan: {clean_name}")
+                print(f"🎯 Signal found: {clean_name}")
                 kirim_radar_telegram(pesan)
                 
         except Exception as err:
-            print(f"⚠️ Kendala membaca data saham {kode_saham}: {err}")
+            print(f"⚠️ Error reading ticker {kode_saham}: {err}")
 
 if __name__ == "__main__":
     jalankan_pemindaian()
