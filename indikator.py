@@ -1,58 +1,20 @@
-"""
-==========================================
-ABO SCANNER
-INDIKATOR
-==========================================
-"""
-
 import pandas as pd
 
-
-def ema(df, periode):
-
-    return df["Close"].ewm(
-        span=periode,
-        adjust=False
-    ).mean()
-
-
-def sma(df, periode):
-
-    return df["Close"].rolling(
-        periode
-    ).mean()
-
-
-def volume_rata(df, periode=20):
-
-    return df["Volume"].rolling(
-        periode
-    ).mean()
-
-
-def nilai_transaksi(df):
-
-    return df["Close"] * df["Volume"]
-
-
-def highest(df, periode=20):
-
-    return df["High"].rolling(
-        periode
-    ).max()
-
-
-def lowest(df, periode=20):
-
-    return df["Low"].rolling(
-        periode
-    ).min()
-
-
-def range_sideways(df, periode=20):
-
-    high = highest(df, periode)
-
-    low = lowest(df, periode)
-
-    return (high - low) / low
+def hitung_bollinger_squeeze(df, periode=20, std_dev=2):
+    """
+    Menghitung penyempitan Bollinger Bands untuk mendeteksi fase sideways.
+    """
+    if len(df) < periode:
+        return None
+        
+    # Hitung Moving Average dan Standard Deviation
+    df['MA20'] = df['Close'].rolling(window=periode).mean()
+    df['STD20'] = df['Close'].rolling(window=periode).std()
+    
+    # Hitung Garis Atas dan Bawah Bollinger Bands
+    df['Upper'] = df['MA20'] + (std_dev * df['STD20'])
+    df['Lower'] = df['MA20'] - (std_dev * df['STD20'])
+    
+    # Bandwidth menentukan seberapa tipis/lebar volatilitas saham
+    df['Bandwidth'] = (df['Upper'] - df['Lower']) / df['MA20']
+    return df
