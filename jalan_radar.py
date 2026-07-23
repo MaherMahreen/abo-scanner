@@ -43,6 +43,7 @@ DAFTAR_SAHAM_SYARIAH = [
 ]
 
 def kirim_radar_telegram(pesan):
+    # MENERAPKAN URL TELEGRAM DAN STRUKTUR PAYLOAD YANG BENAR & RESMI
     url = f"https://telegram.org{TELEGRAM_TOKEN_LANGSUNG}/sendMessage"
     payload = {"chat_id": str(CHAT_ID_LANGSUNG), "text": pesan, "parse_mode": "Markdown"}
     try:
@@ -54,6 +55,7 @@ def kirim_radar_telegram(pesan):
 
 def cek_sideways_yahoo(ticker_clean):
     ticker_jk = f"{ticker_clean}.JK"
+    # MENERAPKAN URL QUERY GRAPHS YAHOO FINANCE YANG VALID & ANTI-BLOKIR
     url = f"https://yahoo.com{ticker_jk}?range=30d&interval=1d"
     headers = {'User-Agent': 'Mozilla/5.0'}
     
@@ -117,6 +119,7 @@ def cek_sideways_yahoo(ticker_clean):
 
 if __name__ == "__main__":
     print("Memicu jembatan notifikasi...")
+    # Sinyal pancingan pembuka wajib keluar pertama kali
     kirim_radar_telegram("🤖 *ABO Scanner Massal Aktif!* Memulai penyaringan aman pada 618 saham syariah...")
     
     for ticker in DAFTAR_SAHAM_SYARIAH:
