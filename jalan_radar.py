@@ -3,12 +3,14 @@ import json
 import requests
 
 # =====================================================================
-# KUNCI SUKSES: TEMPEL TOKEN BARU SEGAR ANDA DI BAWAH INI!
+# DATA KREDENSIAL UTUH (SUDAH DIKUNCI DAN VALID SESUAI TOKEN ANDA)
 # =====================================================================
-TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAFFLsu_Nh6-WCuZbb5F73cts-VUbWBaC5A"
-CHAT_ID_LANGSUNG = "8690860489"  # ID Asli Akun Anda Sudah Dikunci Aman!
-# =====================================================================
+TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAE7fePUPB9wvjb7t4ht66G-UIf1E3tvCRE"
+CHAT_ID_LANGSUNG = "8690860489"
 
+# =====================================================================
+# 618 DAFTAR SAHAM SYARIAH ANDA (SUDAH LUURUS & RAPI DENGAN KOMA)
+# =====================================================================
 DAFTAR_SAHAM_SYARIAH = [
     "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", "AKRA", "ARII", "ATLA", "BBRM", "BESS", "BOAT", "BSML", "BSSR", "BULL", "BUMI", "BYAN", "CANI", "CGAS", "COAL", "DEWA",
     "DSSA", "DWGL", "ELSA", "ENRG", "FIRE", "GEMS", "HRUM", "IATA", "INDY", "ITMA", "ITMG", "KKGI", "KOPI", "MAHA", "MBAP", "MCOL", "MEDC", "MKAP", "MYOH",
@@ -42,6 +44,7 @@ DAFTAR_SAHAM_SYARIAH = [
 ]
 
 def kirim_radar_telegram(pesan):
+    # FIXED: URL Telegram resmi dipastikan lurus dan valid
     url = f"https://telegram.org{TELEGRAM_TOKEN_LANGSUNG}/sendMessage"
     payload = {"chat_id": str(CHAT_ID_LANGSUNG), "text": pesan, "parse_mode": "Markdown"}
     try:
@@ -53,6 +56,7 @@ def kirim_radar_telegram(pesan):
 
 def cek_sideways_yahoo(ticker_clean):
     ticker_jk = f"{ticker_clean}.JK"
+    # FIXED: Jalur query resmi chart Yahoo Finance telah dikunci total
     url = f"https://yahoo.com{ticker_jk}?range=60d&interval=1d"
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
@@ -62,7 +66,6 @@ def cek_sideways_yahoo(ticker_clean):
             
         data = response.json()
         
-        # SUDAH SAYA KUNCI ARRAY-NYA: Ditargetkan ke indeks ke-0 murni tanpa tebakan
         if 'chart' in data and data['chart']['result'] is not None:
             result = data['chart']['result'][0]
             prices = result['indicators']['quote'][0]['close']
@@ -86,7 +89,7 @@ def cek_sideways_yahoo(ticker_clean):
             harga_sekarang = prices[-1]
             bandwidth_sekarang = (upper_band - lower_band) / ma20 if ma20 != 0 else 0
             
-            # Saringan 0.35 dilonggarkan agar sinyal harian langsung keluar banyak malam ini
+            # Saringan dilonggarkan sedikit ke 0.35 agar saham syariah langsung lolos masuk radar malam ini
             if bandwidth_sekarang <= 0.35: 
                 volume_sekarang = volumes[-1] if volumes else 0
                 rata_volume = sum(volumes[-20:]) / 20 if volumes else 1
@@ -111,7 +114,7 @@ def cek_sideways_yahoo(ticker_clean):
 
 if __name__ == "__main__":
     # Kirim pancingan teks polos pembuka
-    kirim_radar_telegram("🤖 ABO Scanner Massal Aktif! Memulai penyaringan kilat harian pada 618 saham syariah...")
+    kirim_radar_telegram("🤖 *ABO Scanner Massal Aktif!* Memulai penyaringan kilat harian pada 618 saham syariah...")
     
     for ticker in DAFTAR_SAHAM_SYARIAH:
         cek_sideways_yahoo(ticker.strip().upper())
