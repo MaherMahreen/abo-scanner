@@ -1,128 +1,432 @@
+# ============================================================
+# ABO SCANNER RADAR v2.0
+# Requests + Yahoo Finance API
+# GitHub Actions Ready
+# ============================================================
+
 import os
-import requests
-import re
 import time
+import requests
+import pandas as pd
 
-# =====================================================================
-# FIXED TOTAL: TOKEN ASLI SEGAR ANDA SUDAH SAYA SUNTIKKAN DI SINI!
-# =====================================================================
-TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAFFLsu_Nh6-WCuZbb5F73cts-VUbWBaC5A"
-CHAT_ID_LANGSUNG = "8690860489"
-# =====================================================================
+# ============================================================
+# TELEGRAM
+# ============================================================
 
-DAFTAR_SAHAM_SYARIAH = [
-    "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", "AKRA", "ARII", "ATLA", "BBRM", "BESS", "BOAT", "BSML", "BSSR", "BULL", "BUMI", "BYAN", "CANI", "CGAS", "COAL", "DEWA",
-    "DSSA", "DWGL", "ELSA", "ENRG", "FIRE", "GEMS", "HRUM", "IATA", "INDY", "ITMA", "ITMG", "KKGI", "KOPI", "MAHA", "MBAP", "MCOL", "MEDC", "MKAP", "MYOH",
-    "PGAS", "PKPK", "PSAT", "PSSI", "PTBA", "PTIS", "RAJA", "RATU", "RGAS", "RMKE", "RMKO", "RUIS", "SEMA", "SGER", "SICO", "SMMT", "SOCI", "SUNI", "TCPI", "TEBE", "TOBA", "TPMA", "UNIQ", "WINS", "WOWS",
-    "ADMG", "AGII", "AKPI", "ALDO", "ALKA", "ANTM", "APLI", "ARCI", "ASPR", "AVIA", "AYLS", "BATR", "BLES", "BMSR", "BRMS", "BRNA", "CHEM", "CITA", "CLPI",
-    "CTBN", "DGWG", "DKFT", "EKAD", "EPAC", "ESIP", "ESSA", "FASW", "FPNI", "FWCT", "GDST", "GGRP", "IFII", "IFSH", "IGAR", "INCI", "INKP", "INTD", "INTP", "IPOL", "ISSP", "KDSI", "KKES",
-    "LMSH", "LTLS", "MBMA", "MDKA", "MDKI", "MINE", "NICE", "NICL", "NIKL", "OBMD", "OKAS", "PACK", "PBID", "PDPP", "PICO", "PPRI",
-    "PSAB", "PTMR", "SAMF", "SBMA", "SMBR", "SMCB", "SMGA", "SMGR", "SMKL", "SMLE", "SOLA", "SPMA", "SULI", "TALF", "TBMS", "TINS", "TIRT", "TKIM", "TPIA", "TRST", "UNIC", "WTON", "YPAS",
-    "AMFG", "AMIN", "APII", "ARNA", "ASGR", "BINO", "BLUE", "CAKK", "CCSI", "CRSN", "DYAN", "FOLK", "GPSO", "HEXA", "HOPE", "HYGN", "ICON", "IKAI", "IKBI", "IMPC", "JECC", "JTPE", "KBLI",
-    "KBLM", "KIAS", "KING", "KOBX", "KOIN", "KONI", "KUAS", "LION", "MARK", "MFMI", "MHKI", "MLIA", "MUTU", "NAIK", "NTBK", "PADA", "PTMP", "SCCO", "SKRN", "SMIL", "SOSS", "SPTO", "TIRA",
-    "TOTO", "UNTR", "VISI", "VOKS", "WIDI", "AALI", "ADES", "AGAR", "AISA", "AMMS", "ASHA", "AYAM", "BISI", "BOBA", "BRRC", "BUAH", "BUDI", "BWPT", "CAMP", "CEKA", "CLEO", "CMRY", "CPIN", "CPRO",
-    "CSRA", "DAYA", "DEWI", "DMND", "DSFI", "DSNG", "EPMT", "EURO", "FISH", "FLMC", "FOOD", "GOOD", "GRPM", "GULA", "GUNA", "GZCO", "HERO", "HOKI", "ICBP", "IKAN", "INDF", "JARR",
-    "JAWA", "JPFA", "KEJU", "KINO", "KMDS", "LSIP", "MAIN", "MAXI", "MBTO", "MKTR", "MLPL", "MPPA", "MRAT", "MSJA", "MYOR", "NANO", "NASI", "NAYZ", "NEST", "NSSS", "PCAR", "PGUN", "PNGO",
-    "PSDN", "PSGO", "PTPS", "RANC", "ROTI", "SDPC", "SGRO", "SIMP", "SIPD", "SKBM", "SKLT", "SMAR", "STAA", "STTP", "TAPG", "TCID", "TGKA", "TGUK", "TLDN", "UCID", "UDNG", "ULTJ",
-    "UNVR", "VICI", "WAPO", "YUPI", "ACES", "AEGS", "ASLC", "AUTO", "BABY", "BAIK", "BAUT", "BAYU", "BELL", "BIKE", "BLTZ", "BMBL", "BMTR", "BOGA", "BOLT", "BRAM", "CINT",
-    "CNMA", "CSAP", "CSMI", "DEPO", "DOOH", "DOSS", "DRMA", "EAST", "ECII", "ENAK", "ERAA", "ERAL", "ERTX", "ESTA", "FAST", "FILM", "GDYR", "GEMA", "GJTL", "GOLF", "GRPH",
-    "GWSA", "HAJJ", "HRTA", "IDEA", "IIKP", "INDR", "INDS", "IPTV", "ISAP", "JGLE", "JIHD", "KAQI", "KICI", "KLIN", "KOTA", "KPIG", "LFLO", "LIVE", "LMAX", "LMPI", "LPIN",
-    "LPPF", "MAPA", "MAPB", "MAPI", "MDIA", "MDIY", "MEJA", "MERI", "MGLV", "MICE", "MKNT", "MNCN", "MPMA", "MSIN", "MSKY", "OLIV", "PANR", "PART", "PDES", "PGLI", "PJAA",
-    "PLAN", "PMJS", "PMUI", "POLU", "PSKT", "PTSP", "PZZA", "RAAM", "RALS", "SCNP", "SHID", "SLIS", "SMSM", "SNLK", "SOFA", "SOTS", "SPRE", "SSTM", "SWID", "TFCO", "TMPO",
-    "TOOL", "TRIS", "TYRE", "UFOE", "VERN", "VKTR", "WOOD", "YELO", "ZONE", "BMHS", "CARE", "CHEK", "DGNS", "DVLA", "HALO", "HEAL", "IKPM", "IRRA", "KLBF", "LABS", "MDLA",
-    "MEDS", "MERK", "MIKA", "MMIX", "MTMH", "OBAT", "OMED", "PEHA", "PEVE", "PRAY", "PRDA", "PRIM", "RSCH", "RSGK", "SAME", "SCPI", "SIDO", "SILO", "SOHO", "SURI", "TSPC",
-    "SRTG", "PALM", "DEFI", "ADCP", "AMAN", "APLN", "ASPI", "ASRI", "ATAP", "BAPI", "BBSS", "BCIP", "BEST", "BIPP", "BKDP", "BKSL", "BSBK", "BSDE", "CITY", "CSIS", "CTRA",
-    "DADA", "DILD", "DMAS", "DUTI", "ELTY", "EMDE", "FMII", "GMTD", "GPRA", "GRIA", "HBAT", "HOMI", "INPP", "IPAC", "JRPT", "KBAG", "KIJA", "KOCI", "LAND", "LPCK", "LPLI",
-    "MKPI", "MMLP", "MSIE", "MTLA", "MTSM", "NZIA", "PAMG", "PLIN", "POLI", "PURI", "RBMS", "REAL", "RELF", "RISE", "ROCK", "RODA", "SAGE", "SATU", "SMDM", "SMRA", "UANG",
-    "URBN", "VAST", "WINR", "AREA", "ATIC", "AWAN", "AXIO", "BELI", "CASH", "CHIP", "CYBR", "DCII", "DIVA", "DMMX", "ELIT", "GLVA", "HDIT", "IOTF", "IRSX", "JATI", "KIOS",
-    "KREN", "LUCK", "MCAS", "MLPT", "MPIX", "MSTI", "MTDL", "NFCX", "PGJO", "PTSN", "RUNS", "TFAS", "TOSK", "TRON", "UVCR", "WGSH", "WIFI", "WIRG", "ZYRX", "ASLI", "BALI",
-    "BDKR", "CASS", "CMNP", "DATA", "DGIK", "EXCL", "FIMP", "GHON", "GOLD", "HADE", "IBST", "IDPR", "INET", "IPCM", "ISAT", "JAST", "JKON", "JSMR", "KARW", "KEEN", "KETR",
-    "KOKA", "MANG", "META", "MORA", "MPOW", "MTEL", "MTPS", "NRCA", "PORT", "POWR", "PPRE", "PTPP", "PTPW", "SMKM", "SSIA", "SUPR", "TAMA", "TLKM", "TOTL", "WEGE", "AKSI",
-    "ASSA", "BIRD", "BLOG", "BLTA", "CMPP", "ELPI", "GIAA", "GTRA", "HAIS", "HATM", "HELI", "JAYA", "KJEN", "KLAS", "LAJU", "LOPI", "LRNA", "MIRA", "MITI", "NELY", "PJHB",
-    "PPGL", "PURA", "RCCC", "SAFE", "SAPX", "SMDR", "TAXI", "TMAS", "TNCA", "TRJA", "TRUK", "WBSA", "WEHA", "GRHA"
-]
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "TOKENNYA_NANTI_SAYA_ISI")
+CHAT_ID = os.getenv("CHAT_ID", "8690860489")
 
-def kirim_radar_telegram(pesan):
-    # MENERAPKAN URL TELEGRAM DAN STRUKTUR PAYLOAD YANG BENAR & RESMI
-    url = f"https://telegram.org{TELEGRAM_TOKEN_LANGSUNG}/sendMessage"
-    payload = {"chat_id": str(CHAT_ID_LANGSUNG), "text": pesan, "parse_mode": "Markdown"}
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        return response.status_code == 200
-    except Exception as e:
-        print(f"Gagal kirim Telegram: {e}")
-        return False
+# ============================================================
+# YAHOO FINANCE
+# ============================================================
 
-def cek_sideways_yahoo(ticker_clean):
-    ticker_jk = f"{ticker_clean}.JK"
-    # MENERAPKAN URL QUERY GRAPHS YAHOO FINANCE YANG VALID & ANTI-BLOKIR
-    url = f"https://yahoo.com{ticker_jk}?range=30d&interval=1d"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    
-    time.sleep(0.4)
-    
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code != 200:
-            return
-            
-        teks_data = response.text
-        
-        pola_harga = r'"close":\[([^[\]]+)\]'
-        pola_volume = r'"volume":\[([^[\]]+)\]'
-        
-        cari_harga = re.search(pola_harga, teks_data)
-        cari_volume = re.search(pola_volume, teks_data)
-        
-        if not cari_harga or not cari_volume:
-            return
-            
-        prices = [float(x) for x in cari_harga.group(1).split(',') if x != 'null']
-        volumes = [float(v) for v in cari_volume.group(1).split(',') if v != 'null']
-        
-        if len(prices) < 20:
-            return
-            
-        close_20d = prices[-20:]
-        ma20 = sum(close_20d) / 20
-        
-        variance = sum((x - ma20) ** 2 for x in close_20d) / 20
-        std_dev = variance ** 0.5
-        
-        upper_band = ma20 + (2 * std_dev)
-        lower_band = ma20 - (2 * std_dev)
-        
-        harga_sekarang = prices[-1]
-        bandwidth_sekarang = (upper_band - lower_band) / ma20 if ma20 != 0 else 0
-        
-        if bandwidth_sekarang <= 0.35: 
-            volume_sekarang = volumes[-1] if volumes else 0
-            rata_volume = sum(volumes[-20:]) / 20 if volumes else 1
-            
-            status_vol = "Volume Mengering"
-            if volume_sekarang > (rata_volume * 1.2):
-                status_vol = "VOLUME SPIKE! Bandar Masuk!"
-                
-            pesan = (
-                f"🚨 *ABO RADAR: SAHAM SIDEWAYS* 🚨\n\n"
-                f"Saham Syariah: *{ticker_clean}*\n"
-                f"Harga Terakhir: Rp {int(harga_sekarang)}\n"
-                f"Bandwidth: {bandwidth_sekarang*100:.2f}%\n"
-                f"Kondisi: {status_vol}\n\n"
-                f"💡 _Breakout Target: Rp {int(upper_band)}_"
+BASE_URL = "https://query1.finance.yahoo.com/v8/finance/chart"
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 "
+        "(Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 "
+        "(KHTML, like Gecko) "
+        "Chrome/137.0 Safari/537.36"
+    )
+}
+
+REQUEST_TIMEOUT = 20
+RETRY = 3
+
+# ============================================================
+# TELEGRAM SENDER
+# ============================================================
+
+def kirim_telegram(pesan):
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": pesan,
+        "parse_mode": "Markdown"
+    }
+
+    for i in range(RETRY):
+
+        try:
+
+            r = requests.post(
+                url,
+                data=payload,
+                timeout=REQUEST_TIMEOUT
             )
-            print(f"🎯 Sinyal Ditemukan: {ticker_clean}")
-            kirim_radar_telegram(pesan)
-            
+
+            if r.status_code == 200:
+                print("Telegram OK")
+                return True
+
+            print(
+                f"Telegram Error "
+                f"{r.status_code} : {r.text}"
+            )
+
+        except Exception as e:
+
+            print(
+                f"Telegram Retry {i+1} : {e}"
+            )
+
+        time.sleep(2)
+# ============================================================
+# AMBIL DATA YAHOO FINANCE
+# ============================================================
+
+def ambil_data_yahoo(kode):
+
+    symbol = f"{kode}.JK"
+
+    url = (
+        f"{BASE_URL}/{symbol}"
+        "?range=3mo"
+        "&interval=1d"
+    )
+
+    for percobaan in range(RETRY):
+
+        try:
+
+            r = requests.get(
+                url,
+                headers=HEADERS,
+                timeout=REQUEST_TIMEOUT
+            )
+
+            if r.status_code != 200:
+
+                print(
+                    f"{kode} gagal HTTP {r.status_code}"
+                )
+
+                time.sleep(1)
+
+                continue
+
+            data = r.json()
+
+            chart = data.get("chart", {})
+
+            result = chart.get("result")
+
+            if not result:
+
+                print(f"{kode} tidak memiliki data.")
+
+                return None
+
+            quote = result[0]["indicators"]["quote"][0]
+
+            close = quote.get("close", [])
+            volume = quote.get("volume", [])
+
+            # buang nilai None
+            harga = []
+            vol = []
+
+            for h, v in zip(close, volume):
+
+                if h is None:
+                    continue
+
+                harga.append(float(h))
+
+                if v is None:
+                    vol.append(0)
+                else:
+                    vol.append(float(v))
+
+            if len(harga) < 30:
+
+                print(
+                    f"{kode} data kurang dari 30 hari."
+                )
+
+                return None
+
+            return {
+
+                "kode": kode,
+
+                "close": harga,
+
+                "volume": vol
+
+            }
+
+        except Exception as e:
+
+            print(
+                f"{kode} retry "
+                f"{percobaan+1} : {e}"
+            )
+
+            time.sleep(2)
+
+    return None
+    # ============================================================
+# PERHITUNGAN BOLLINGER BAND
+# ============================================================
+
+def hitung_bollinger(close, periode=20):
+
+    if len(close) < periode:
+        return None
+
+    data = close[-periode:]
+
+    ma = sum(data) / periode
+
+    variance = sum((x - ma) ** 2 for x in data) / periode
+
+    std = variance ** 0.5
+
+    upper = ma + (2 * std)
+
+    lower = ma - (2 * std)
+
+    bandwidth = 0
+
+    if ma != 0:
+        bandwidth = (upper - lower) / ma
+
+    return {
+
+        "ma20": ma,
+
+        "upper": upper,
+
+        "lower": lower,
+
+        "std": std,
+
+        "bandwidth": bandwidth
+
+    }
+
+
+# ============================================================
+# CEK VOLUME
+# ============================================================
+
+def analisa_volume(volume):
+
+    if len(volume) < 20:
+
+        return {
+
+            "rata": 0,
+
+            "sekarang": 0,
+
+            "status": "Tidak Ada Data"
+
+        }
+
+    rata = sum(volume[-20:]) / 20
+
+    sekarang = volume[-1]
+
+    status = "Normal"
+
+    if sekarang < rata * 0.70:
+
+        status = "Volume Mengering"
+
+    elif sekarang > rata * 1.50:
+
+        status = "Volume Spike"
+
+    return {
+
+        "rata": rata,
+
+        "sekarang": sekarang,
+
+        "status": status
+
+    }
+
+    # ============================================================
+# DETEKSI SIDEWAYS
+# ============================================================
+
+BANDWIDTH_SIDEWAYS = 0.35      # 35%
+BREAKOUT_BUFFER = 0.01         # 1%
+
+def cek_sideways(data):
+
+    if data is None:
+        return None
+
+    close = data["close"]
+    volume = data["volume"]
+
+    bb = hitung_bollinger(close)
+
+    if bb is None:
+        return None
+
+    vol = analisa_volume(volume)
+
+    harga = close[-1]
+
+    bandwidth = bb["bandwidth"]
+
+    target_breakout = bb["upper"] * (1 + BREAKOUT_BUFFER)
+
+    sideways = bandwidth <= BANDWIDTH_SIDEWAYS
+
+    return {
+
+        "kode": data["kode"],
+
+        "harga": harga,
+
+        "bandwidth": bandwidth,
+
+        "upper": bb["upper"],
+
+        "lower": bb["lower"],
+
+        "ma20": bb["ma20"],
+
+        "target": target_breakout,
+
+        "volume": vol["status"],
+
+        "sideways": sideways
+
+    }
+
+
+# ============================================================
+# FORMAT PESAN TELEGRAM
+# ============================================================
+
+def buat_pesan(signal):
+
+    pesan = (
+        "🚨 *ABO RADAR* 🚨\n\n"
+        f"*{signal['kode']}*\n"
+        f"Harga : Rp {signal['harga']:,.0f}\n"
+        f"MA20 : Rp {signal['ma20']:,.0f}\n"
+        f"Upper BB : Rp {signal['upper']:,.0f}\n"
+        f"Lower BB : Rp {signal['lower']:,.0f}\n"
+        f"Bandwidth : {signal['bandwidth']*100:.2f}%\n"
+        f"Volume : {signal['volume']}\n\n"
+        f"🎯 Target Breakout : Rp {signal['target']:,.0f}"
+    )
+# ============================================================
+# MEMBACA DAFTAR SAHAM
+# ============================================================
+
+def baca_daftar_saham():
+
+    if not os.path.exists("saham_syariah.csv"):
+        print("File saham_syariah.csv tidak ditemukan.")
+        return []
+
+    try:
+
+        df = pd.read_csv("saham_syariah.csv")
+
+        kolom = df.columns[0]
+
+        daftar = (
+            df[kolom]
+            .astype(str)
+            .str.strip()
+            .str.upper()
+            .tolist()
+        )
+
+        daftar = list(dict.fromkeys(daftar))
+
+        return daftar
+
     except Exception as e:
-        print(f"Skip {ticker_clean}: {e}")
+
+        print(f"Gagal membaca CSV : {e}")
+
+        return []
+
+
+# ============================================================
+# SCANNER
+# ============================================================
+
+def scanner():
+
+    daftar = baca_daftar_saham()
+
+    if len(daftar) == 0:
+
+        kirim_telegram(
+            "❌ saham_syariah.csv kosong atau tidak ditemukan."
+        )
+
+        return
+
+    print(f"Total saham : {len(daftar)}")
+
+    kirim_telegram(
+        f"🤖 *ABO Scanner Aktif*\n\n"
+        f"Memulai scan {len(daftar)} saham syariah..."
+    )
+
+    jumlah_signal = 0
+
+    for i, kode in enumerate(daftar, start=1):
+
+        print(f"[{i}/{len(daftar)}] {kode}")
+
+        data = ambil_data_yahoo(kode)
+
+        if data is None:
+            continue
+
+        hasil = cek_sideways(data)
+
+        if hasil is None:
+            continue
+
+        if hasil["sideways"]:
+
+            jumlah_signal += 1
+
+            print(
+                f"Signal : {kode}"
+            )
+
+            kirim_telegram(
+                buat_pesan(hasil)
+            )
+
+        time.sleep(0.25)
+
+    kirim_telegram(
+
+        f"🏁 *ABO Scanner Selesai*\n\n"
+        f"Total saham : {len(daftar)}\n"
+        f"Sinyal ditemukan : {jumlah_signal}"
+
+    )
+
+    print("Scanner selesai.")
+
+
+# ============================================================
+# MAIN
+# ============================================================
 
 if __name__ == "__main__":
-    print("Memicu jembatan notifikasi...")
-    # Sinyal pancingan pembuka wajib keluar pertama kali
-    kirim_radar_telegram("🤖 *ABO Scanner Massal Aktif!* Memulai penyaringan aman pada 618 saham syariah...")
-    
-    for ticker in DAFTAR_SAHAM_SYARIAH:
-        cek_sideways_yahoo(ticker.strip().upper())
-        
-    kirim_radar_telegram("🏁 Pemindaian Selesai. Semua saham syariah selesai disaring.")
+
+    scanner()
+    return pesanreturn False
