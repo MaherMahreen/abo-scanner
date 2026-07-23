@@ -1,7 +1,10 @@
-name: Sinyal Saham Sideways Harian
+name: ABO Scanner Harian
 
 on:
   workflow_dispatch:
+
+  schedule:
+    - cron: '30 9 * * 1-5'
 
 jobs:
   scan-market:
@@ -19,7 +22,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas requests yfinance numpy
+          pip install pandas numpy yfinance requests
 
       - name: Jalankan ABO Scanner
         env:
