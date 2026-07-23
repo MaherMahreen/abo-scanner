@@ -1,38 +1,27 @@
-"""
-==========================================
-ABO SCANNER
-TELEGRAM ENGINE
-==========================================
-"""
-
 import os
 import requests
 
-
-class TelegramEngine:
-
-    def __init__(self):
-
-        self.token = os.getenv("TELEGRAM_TOKEN")
-        self.chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
-    def kirim(self, pesan):
-
-        url = f"https://api.telegram.org/bot{self.token}/sendMessage"
-
-        data = {
-            "chat_id": self.chat_id,
-            "text": pesan
-        }
-
-        try:
-
-            requests.post(
-                url,
-                data=data,
-                timeout=10
-            )
-
-        except Exception as e:
-
-            print(e)
+def kirim_radar_telegram(pesan):
+    """
+    Mengirimkan teks notifikasi langsung ke akun/grup Telegram Anda.
+    """
+    token = os.environ.get("TELEGRAM_TOKEN")
+    chat_id = os.environ.get("CHAT_ID")
+    
+    if not token or not chat_id:
+        print("Gagal Kirim: Kredensial Telegram Secrets belum diisi di GitHub.")
+        return False
+        
+    url = f"https://telegram.org{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": pesan,
+        "parse_mode": "Markdown"
+    }
+    
+    try:
+        respon = requests.post(url, json=payload, timeout=10)
+        return respon.status_code == 200
+    except Exception as e:
+        print(f"Error koneksi ke Telegram Telegram: {e}")
+        return False
