@@ -1,30 +1,15 @@
-import os
-import requests
+import pandas as pd
 
-# Mengambil token dan chat ID dari GitHub Secrets Anda
-TOKEN = os.getenv('TELEGRAM_TOKEN')
-CHAT_ID = os.getenv('CHAT_ID')
+print("=== ABO Scanner Data Test ===")
 
-# Pastikan token tidak kosong
-if not TOKEN or not CHAT_ID:
-    print("❌ ERROR: TELEGRAM_TOKEN atau CHAT_ID di GitHub Secrets belum diisi dengan benar!")
-    exit(1)
+df = pd.read_csv("saham_syariah.csv")
 
-# Format URL API Telegram yang benar (menggunakan kata 'bot')
-url = f"https://telegram.com{TOKEN}/sendMessage"
+print("Jumlah baris:", len(df))
 
-payload = {
-    "chat_id": CHAT_ID,
-    "text": "🎉 BERHASIL! GitHub Actions Anda sekarang sudah bisa mengirim pesan ke Telegram."
-}
+print("\nNama kolom:")
+print(df.columns.tolist())
 
-print("Sedang mencoba mengirim pesan ke Telegram...")
-response = requests.post(url, json=payload)
+print("\n5 data pertama:")
+print(df.head())
 
-print(f"Status Code dari Telegram: {response.status_code}")
-print(f"Respon Server: {response.text}")
-
-if response.status_code == 200:
-    print("✅ Pesan sukses terkirim! Silakan cek aplikasi Telegram Anda.")
-else:
-    print("❌ Gagal mengirim pesan. Silakan periksa kembali Token atau Chat ID Anda di GitHub Secrets.")
+print("\n=== SELESAI ===")
