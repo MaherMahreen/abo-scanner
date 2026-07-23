@@ -1,60 +1,30 @@
-import requests
 import os
 import requests
 
-token = os.getenv("TELEGRAM_TOKEN")
-chat_id = os.getenv("CHAT_ID")
+# Mengambil token dan chat ID dari GitHub Secrets Anda
+TOKEN = os.getenv('TELEGRAM_TOKEN')
+CHAT_ID = os.getenv('CHAT_ID')
 
-r = requests.post(
-    f"https://api.telegram.org/bot{token}/sendMessage",
-    data={
-        "chat_id": chat_id,
-        "text": "✅ Tes dari GitHub Actions berhasil!"
-    }
-)
+# Pastikan token tidak kosong
+if not TOKEN or not CHAT_ID:
+    print("❌ ERROR: TELEGRAM_TOKEN atau CHAT_ID di GitHub Secrets belum diisi dengan benar!")
+    exit(1)
 
-print(r.status_code)
-print(r.text)
+# Format URL API Telegram yang benar (menggunakan kata 'bot')
+url = f"https://telegram.com{TOKEN}/sendMessage"
 
-exit()
-# =====================================================================
-# DATA KREDENSIAL ASLI ANDA (SUNTIKAN LANGSUNG)
-# =====================================================================
-TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAE7fePUPB9wvjb7t4ht66G-UIf1E3tvCRE"
-CHAT_ID_LANGSUNG = "8690860489"
-# =====================================================================
+payload = {
+    "chat_id": CHAT_ID,
+    "text": "🎉 BERHASIL! GitHub Actions Anda sekarang sudah bisa mengirim pesan ke Telegram."
+}
 
-def kirim_pesan_murni(teks):
-    """
-    Fungsi super ringan untuk menembak pesan teks langsung tanpa rumus saham.
-    """
-    url = f"https://telegram.org{TELEGRAM_TOKEN_LANGSUNG}/sendMessage"
-    payload = {
-        "chat_id": str(CHAT_ID_LANGSUNG),
-        "text": teks,
-        "parse_mode": "Markdown"
-    }
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        if response.status_code == 200:
-            print("✅ BERHASIL: Pesan teks murni sukses dikirim ke Telegram!")
-            return True
-        else:
-            print(f"❌ GAGAL: Server Telegram menolak dengan kode {response.status_code}")
-            print(f"Respon server: {response.text}")
-            return False
-    except Exception as e:
-        print(f"❌ ERROR: Gagal terhubung ke API Telegram: {e}")
-        return False
+print("Sedang mencoba mengirim pesan ke Telegram...")
+response = requests.post(url, json=payload)
 
-if __name__ == "__main__":
-    print("🚀 Memulai pengujian kirim pesan teks murni...")
-    
-    pesan_tes = (
-        "🤖 *NOTIFIKASI AKTIF TANPA SAHAM*\n\n"
-        "Hallo Bos! Ini adalah pesan tes murni.\n"
-        "Semua rumus saringan saham sudah dimatikan.\n\n"
-        "💡 _Jika pesan ini masuk, artinya Token dan ID Anda sudah 100% tepat!_"
-    )
-    
-    kirim_pesan_murni(pesan_tes)
+print(f"Status Code dari Telegram: {response.status_code}")
+print(f"Respon Server: {response.text}")
+
+if response.status_code == 200:
+    print("✅ Pesan sukses terkirim! Silakan cek aplikasi Telegram Anda.")
+else:
+    print("❌ Gagal mengirim pesan. Silakan periksa kembali Token atau Chat ID Anda di GitHub Secrets.")
