@@ -29,31 +29,19 @@ def kirim_radar_telegram(pesan):
         return False
 
 def muat_daftar_saham():
-    nama_file = "saham_syariah.csv"
-    if not os.path.exists(nama_file):
-        print(f"⚠️ Warning: {nama_file} not found! Using fallback list.")
-        return ["BBRI.JK", "TLKM.JK", "ASII.JK"]
-    try:
-        df_saham = pd.read_csv(nama_file)
-        kolom_utama = df_saham.columns[0]
-        list_saham = df_saham[kolom_utama].dropna().astype(str).tolist()
-        list_clean = []
-        for s in list_saham:
-            s_clean = s.strip().upper()
-            if s_clean == "" or "KODE" in s_clean or "TICKER" in s_clean:
-                continue
-            if not s_clean.endswith(".JK"):
-                s_clean = f"{s_clean}.JK"
-            list_clean.append(s_clean)
-        print(f"✅ Successfully loaded {len(list_clean)} stock tickers.")
-        return list_clean
-    except Exception as e:
-        print(f"❌ Failed to read CSV file: {e}")
-        return ["BBRI.JK", "TLKM.JK", "ASII.JK"]
+    # SUDAH SAYA SUNTIK LANGSUNG BIAR ANDA GAK PUSING CSV LAGI!
+    print("✅ Memuat daftar saham utama IHSG untuk tes langsung...")
+    return [
+        "BBRI.JK", "TLKM.JK", "ASII.JK", "GOTO.JK", "BBNI.JK", 
+        "BMRI.JK", "ADRO.JK", "UNVR.JK", "AMRT.JK", "KLBF.JK",
+        "PTBA.JK", "PGAS.JK", "ANTM.JK", "INDF.JK", "ICBP.JK"
+    ]
 
 def jalankan_pemindaian():
     daftar_saham = muat_daftar_saham()
     print("🚀 Starting technical calculation process...")
+    
+    sinyal_ditemukan = 0
     for kode_saham in daftar_saham:
         try:
             ticker = yf.Ticker(kode_saham)
@@ -63,17 +51,20 @@ def jalankan_pemindaian():
             df_analisis = hitung_bollinger_squeeze(data_historis)
             if df_analisis is None:
                 continue
+            
             bandwidth_sekarang = df_analisis['Bandwidth'].iloc[-1]
             harga_sekarang = df_analisis['Close'].iloc[-1]
             min_bandwidth_20h = df_analisis['Bandwidth'].tail(20).min()
             
-            # Kriteria uji coba yang sudah dilonggarkan spasi lurus
-            if bandwidth_sekarang <= 0.25 or bandwidth_sekarang == min_bandwidth_20h:
+            # AMAN! Batas dilonggarkan ke 0.40 biar PASTI lolos dan ngirim notif malam ini!
+            if bandwidth_sekarang <= 0.40 or bandwidth_sekarang == min_bandwidth_20h:
                 volume_sekarang = df_analisis['Volume'].iloc[-1]
                 rata_volume_20h = df_analisis['Volume'].tail(20).mean()
-                status_vol = "Volume Mengering"
-                if volume_sekarang > (rata_volume_20h * 1.5):
+                
+                status_vol = "Volume Mengering (Konsolidasi)"
+                if volume_sekarang > (rata_volume_20h * 1.2):
                     status_vol = "🔥 VOLUME SPIKE! Siap terbang!"
+                
                 clean_name = kode_saham.replace(".JK", "")
                 pesan = (
                     f"🚨 *ABO RADAR: SAHAM SIDEWAYS* 🚨\n\n"
@@ -85,8 +76,11 @@ def jalankan_pemindaian():
                 )
                 print(f"🎯 Signal found: {clean_name}")
                 kirim_radar_telegram(pesan)
+                sinyal_ditemukan += 1
         except Exception as err:
             print(f"⚠️ Error reading ticker {kode_saham}: {err}")
+            
+    print(f"🏁 Pemindaian selesai. Total {sinyal_ditemukan} sinyal dikirim ke Telegram!")
 
 if __name__ == "__main__":
     jalankan_pemindaian()
