@@ -1,15 +1,13 @@
-name: Sinyal Saham Sideways Harian
+name: Tes Koneksi Telegram
 
 on:
-  schedule:
-    - cron: '30 9 * * 1-5'
   workflow_dispatch:
 
 env:
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
 
 jobs:
-  scan-market:
+  tes-telegram:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,15 +22,11 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy pandas yfinance requests
+          pip install requests
 
-      - name: Run Scanner
+      - name: Jalankan Tes Kirim Pesan
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
-          cp jalan_radar.py /tmp/jalan_radar.py
-          cp saham_syariah.csv /tmp/saham_syariah.csv
-
-          cd /tmp
-          python jalan_radar.py
+          python kirim_tes.py
