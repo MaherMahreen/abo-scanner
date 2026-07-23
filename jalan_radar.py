@@ -4,10 +4,10 @@ import yfinance as yf
 import requests
 
 # =====================================================================
-# BERES! TOKEN ASLI ANDA SUDAH SAYA SUNTIKKAN LANGSUNG DI BAWAH INI
+# FIXED! SEMUA DATA ASLI ANDA SUDAH SAYA SUNTIKKAN DAN DIKUNCI DI SINI
 # =====================================================================
 TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAE7fePUPB9wvjb7t4ht66G-UIf1E3tvCRE"
-CHAT_ID_LANGSUNG = "6943806745" # ID murni akun pribadi Anda
+CHAT_ID_LANGSUNG = "8690860489"  # <--- ID ASLI ANDA SUDAH DIPASANG!
 # =====================================================================
 
 def hitung_bollinger_squeeze(df, periode=20, std_dev=2):
@@ -38,8 +38,8 @@ def muat_daftar_saham():
     ]
 
 def jalankan_pemindaian():
-    # === TEST PING MANDATORI ===
-    kirim_radar_telegram("🤖 *ABO Scanner Terhubung Langsung!* Memulai pemindaian bursa harian...")
+    # TEST PING JAMINAN MASUK
+    kirim_radar_telegram("🤖 *ABO Scanner Aktif Luar Biasa!* Memulai pemindaian barian...")
     
     daftar_saham = muat_daftar_saham()
     print("🚀 Starting technical calculation process...")
