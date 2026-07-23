@@ -22,4 +22,6 @@ jobs:
       run: pip install requests
 
     - name: Jalankan ABO Scanner Massal
-      run: python jalan_radar.py
+      run: |
+        # Jalankan langsung di folder utama tanpa pindah tempat agar semua file terbaca sempurna
+        python jalan_radar.py
