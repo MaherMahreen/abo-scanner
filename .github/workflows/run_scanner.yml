@@ -2,8 +2,9 @@ name: Sinyal Saham Sideways Harian
 
 on:
   schedule:
+    # Berjalan otomatis Senin - Jumat jam 16:30 WIB (09:30 UTC) setelah bursa BEI tutup
     - cron: '30 9 * * 1-5'
-  workflow_dispatch:
+  workflow_dispatch: # Mengaktifkan tombol manual "Run workflow"
 
 jobs:
   scan-market:
@@ -23,5 +24,5 @@ jobs:
 
     - name: Jalankan ABO Scanner Massal
       run: |
-        # Jalankan langsung di folder utama tanpa pindah tempat agar semua file terbaca sempurna
-        python jalan_radar.py
+        # FIXED: Diarahkan langsung ke main.py agar seluruh modul Score & Signal Engine aktif nyata!
+        python main.py
