@@ -1,9 +1,9 @@
 def kirim_radar_telegram(pesan):
 
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN_LANGSUNG}/sendMessage"
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
     payload = {
-        "chat_id": CHAT_ID_LANGSUNG,
+        "chat_id": CHAT_ID,
         "text": pesan,
         "parse_mode": "Markdown"
     }
