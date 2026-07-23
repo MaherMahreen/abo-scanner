@@ -9,7 +9,7 @@ TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAE7fePUPB9wvjb7t4ht66G-UIf1E3tvCRE"
 CHAT_ID_LANGSUNG = "8690860489"
 
 # =====================================================================
-# BERES! 618 KODE SAHAM SYARIAH ANDA SUDAH DIPISAH KOMA DENGAN RAPI
+# 618 DAFTAR SAHAM SYARIAH ANDA (FORMAT SUDAH LUURUS & RAPI)
 # =====================================================================
 DAFTAR_SAHAM_SYARIAH = [
     "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", "AKRA", "ARII", "ATLA", "BBRM", "BESS", "BOAT", "BSML", "BSSR", "BULL", "BUMI", "BYAN", "CANI", "CGAS", "COAL", "DEWA",
@@ -51,8 +51,7 @@ def kirim_radar_telegram(pesan):
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             return response.getcode() == 200
-    except Exception as e:
-        print(f"Gagal kirim Telegram: {e}")
+    except Exception:
         return False
 
 def cek_sideways_yahoo(ticker_clean):
@@ -60,7 +59,7 @@ def cek_sideways_yahoo(ticker_clean):
     url = f"https://yahoo.com{ticker_jk}?range=60d&interval=1d"
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with urllib.request.urlopen(req, timeout=7) as response:
             data = json.loads(response.read().decode())
             
         result = data['chart']['result'][0]
@@ -85,14 +84,13 @@ def cek_sideways_yahoo(ticker_clean):
         harga_sekarang = prices[-1]
         bandwidth_sekarang = (upper_band - lower_band) / ma20 if ma20 != 0 else 0
         
-        # Filter 0.40 dilonggarkan agar saham yang terdeteksi konsolidasi langsung keluar malam ini
-        if bandwidth_sekarang <= 0.40:
-            volume_sekarang = volumes[-1]
-            rata_volume = sum(volumes[-20:]) / 20
+        if bandwidth_sekarang <= 0.15: # Mode trading nyata diperketat biar sinyalnya akurat kualitas A
+            volume_sekarang = volumes[-1] if volumes else 0
+            rata_volume = sum(volumes[-20:]) / 20 if volumes else 1
             
-            status_vol = "Volume Mengering (Konsolidasi)"
-            if volume_sekarang and rata_volume and volume_sekarang > (rata_volume * 1.2):
-                status_vol = "🔥 VOLUME SPIKE! Siap terbang!"
+            status_vol = "Volume Mengering"
+            if volume_sekarang > (rata_volume * 1.3):
+                status_vol = "🔥 VOLUME SPIKE! Bandar Masuk!"
                 
             pesan = (
                 f"🚨 *ABO RADAR: SAHAM SIDEWAYS* 🚨\n\n"
@@ -100,25 +98,18 @@ def cek_sideways_yahoo(ticker_clean):
                 f"Harga Terakhir: Rp {int(harga_sekarang)}\n"
                 f"Bandwidth: {bandwidth_sekarang*100:.2f}%\n"
                 f"Kondisi: {status_vol}\n\n"
-                f"💡 _Pantau breakout Upper Band di Rp {int(upper_band)}_"
+                f"💡 _Breakout Target: Rp {int(upper_band)}_"
             )
             print(f"🎯 Sinyal Ditemukan: {ticker_clean}")
             kirim_radar_telegram(pesan)
             
-    except Exception as err:
-        print(f"Lewati {ticker_clean}: {err}")
+    except Exception:
+        pass
 
 if __name__ == "__main__":
-    kirim_radar_telegram("🤖 *ABO Scanner Massal Aktif!* Mulai memindai 618 saham syariah Anda...")
+    kirim_radar_telegram("🚀 *ABO Scanner Aktif!* Memulai penyaringan kilat harian pada 618 saham syariah...")
     
-    clean_tickers = []
-    for s in DAFTAR_SAHAM_SYARIAH:
-        t = s.strip().upper().replace(".JK", "")
-        if t != "":
-            clean_tickers.append(t)
-            
-    print(f"Memulai kalkulasi {len(clean_tickers)} saham syariah...")
-    for ticker in clean_tickers:
-        cek_sideways_yahoo(ticker)
+    for ticker in DAFTAR_SAHAM_SYARIAH:
+        cek_sideways_yahoo(ticker.strip().upper())
         
     kirim_radar_telegram("🏁 *Pemindaian Selesai.* Semua saham syariah selesai disaring.")
