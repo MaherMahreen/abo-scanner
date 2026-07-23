@@ -1,5 +1,22 @@
 import requests
+import os
+import requests
 
+token = os.getenv("TELEGRAM_TOKEN")
+chat_id = os.getenv("CHAT_ID")
+
+r = requests.post(
+    f"https://api.telegram.org/bot{token}/sendMessage",
+    data={
+        "chat_id": chat_id,
+        "text": "✅ Tes dari GitHub Actions berhasil!"
+    }
+)
+
+print(r.status_code)
+print(r.text)
+
+exit()
 # =====================================================================
 # DATA KREDENSIAL ASLI ANDA (SUNTIKAN LANGSUNG)
 # =====================================================================
