@@ -20,7 +20,7 @@ import requests
 # =====================================================================
 # KUNCI SUKSES: MASUKKAN DATA TELEGRAM ANDA LANGSUNG DI BAWAH INI!
 # =====================================================================
-TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAH3x9r_haNlElYmC6VeTgVmZIJ_AIwAoCE"
+TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAE7fePUPB9wvjb7t4ht66G-UIf1E3tvCRE"
 CHAT_ID_LANGSUNG = "8567909596"
 # =====================================================================
 
