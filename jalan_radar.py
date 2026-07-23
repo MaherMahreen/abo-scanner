@@ -1,8 +1,7 @@
 def kirim_radar_telegram(pesan):
 
     url = f"https://api.telegram.org/bot8567909596:AAFFLsu_Nh6-WCuZbb5F73cts-VUbWBaC5A
-
-/sendMessage"
+A/sendMessage
 
     payload = {
         "chat_id": 8690860489,
