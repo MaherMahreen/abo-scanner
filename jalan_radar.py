@@ -1,15 +1,16 @@
 import os
 import json
 import requests
+import time  # Untuk memberikan jeda waktu agar tidak diblokir Yahoo
 
 # =====================================================================
-# DATA KREDENSIAL UTUH (SUDAH DIKUNCI DAN VALID SESUAI TOKEN ANDA)
+# DATA KREDENSIAL UTUH (SUDAH DIKUNCI DAN VALID)
 # =====================================================================
 TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAE7fePUPB9wvjb7t4ht66G-UIf1E3tvCRE"
 CHAT_ID_LANGSUNG = "8690860489"
 
 # =====================================================================
-# 618 DAFTAR SAHAM SYARIAH ANDA (SUDAH LUURUS & RAPI DENGAN KOMA)
+# 618 DAFTAR SAHAM SYARIAH ANDA
 # =====================================================================
 DAFTAR_SAHAM_SYARIAH = [
     "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", "AKRA", "ARII", "ATLA", "BBRM", "BESS", "BOAT", "BSML", "BSSR", "BULL", "BUMI", "BYAN", "CANI", "CGAS", "COAL", "DEWA",
@@ -44,7 +45,6 @@ DAFTAR_SAHAM_SYARIAH = [
 ]
 
 def kirim_radar_telegram(pesan):
-    # FIXED: URL Telegram resmi dipastikan lurus dan valid
     url = f"https://telegram.org{TELEGRAM_TOKEN_LANGSUNG}/sendMessage"
     payload = {"chat_id": str(CHAT_ID_LANGSUNG), "text": pesan, "parse_mode": "Markdown"}
     try:
@@ -56,12 +56,17 @@ def kirim_radar_telegram(pesan):
 
 def cek_sideways_yahoo(ticker_clean):
     ticker_jk = f"{ticker_clean}.JK"
-    # FIXED: Jalur query resmi chart Yahoo Finance telah dikunci total
-    url = f"https://yahoo.com{ticker_jk}?range=60d&interval=1d"
+    # OPTIMASI: Kita perpendek range ke 30d agar beban download server sangat ringan
+    url = f"https://yahoo.com{ticker_jk}?range=30d&interval=1d"
     headers = {'User-Agent': 'Mozilla/5.0'}
+    
+    # ANTI-BLOKIR: Jeda 0.5 detik per saham agar Yahoo tidak curiga spam
+    time.sleep(0.5)
+    
     try:
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code != 200:
+            print(f"Skip {ticker_clean}: Server sibuk/limit (Status {response.status_code})")
             return
             
         data = response.json()
@@ -89,7 +94,7 @@ def cek_sideways_yahoo(ticker_clean):
             harga_sekarang = prices[-1]
             bandwidth_sekarang = (upper_band - lower_band) / ma20 if ma20 != 0 else 0
             
-            # Saringan dilonggarkan sedikit ke 0.35 agar saham syariah langsung lolos masuk radar malam ini
+            # Saringan dilonggarkan sedikit ke 0.35 agar malam ini notifnya banjir keluar banyak
             if bandwidth_sekarang <= 0.35: 
                 volume_sekarang = volumes[-1] if volumes else 0
                 rata_volume = sum(volumes[-20:]) / 20 if volumes else 1
@@ -113,8 +118,8 @@ def cek_sideways_yahoo(ticker_clean):
         print(f"Skip {ticker_clean}: {e}")
 
 if __name__ == "__main__":
-    # Kirim pancingan teks polos pembuka
-    kirim_radar_telegram("🤖 *ABO Scanner Massal Aktif!* Memulai penyaringan kilat harian pada 618 saham syariah...")
+    # TES PING JAMINAN: Wajib mengirim pesan tanpa saringan di awal untuk tes jembatan
+    kirim_radar_telegram("🤖 *ABO Scanner Massal Aktif!* Memulai penyaringan aman pada 618 saham syariah...")
     
     for ticker in DAFTAR_SAHAM_SYARIAH:
         cek_sideways_yahoo(ticker.strip().upper())
