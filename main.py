@@ -1,8 +1,48 @@
 import os
 import pandas as pd
 import yfinance as yf
-from indikator import hitung_bollinger_squeeze
-from telegram import kirim_radar_telegram
+import requests
+
+def hitung_bollinger_squeeze(df, periode=20, std_dev=2):
+    """
+    Menghitung penyempitan Bollinger Bands untuk mendeteksi fase sideways.
+    """
+    if len(df) < periode:
+        return None
+        
+    df['MA20'] = df['Close'].rolling(window=periode).mean()
+    df['STD20'] = df['Close'].rolling(window=periode).std()
+    
+    df['Upper'] = df['MA20'] + (std_dev * df['STD20'])
+    df['Lower'] = df['MA20'] - (std_dev * df['STD20'])
+    
+    df['Bandwidth'] = (df['Upper'] - df['Lower']) / df['MA20']
+    return df
+
+def kirim_radar_telegram(pesan):
+    """
+    Mengirimkan teks notifikasi langsung ke akun/grup Telegram Anda.
+    """
+    token = os.environ.get("TELEGRAM_TOKEN")
+    chat_id = os.environ.get("CHAT_ID")
+    
+    if not token or not chat_id:
+        print("Telegram configuration error: Secrets are missing.")
+        return False
+        
+    url = f"https://telegram.org{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": pesan,
+        "parse_mode": "Markdown"
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        return response.status_code == 200
+    except Exception as e:
+        print(f"Failed to connect to Telegram API: {e}")
+        return False
 
 def muat_daftar_saham():
     nama_file = "saham_syariah.csv"
