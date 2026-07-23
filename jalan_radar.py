@@ -29,15 +29,17 @@ def kirim_radar_telegram(pesan):
         return False
 
 def muat_daftar_saham():
-    # SUDAH SAYA SUNTIK LANGSUNG BIAR ANDA GAK PUSING CSV LAGI!
     print("✅ Memuat daftar saham utama IHSG untuk tes langsung...")
     return [
-        "BBRI.JK", "TLKM.JK", "ASII.JK", "GOTO.JK", "BBNI.JK", 
-        "BMRI.JK", "ADRO.JK", "UNVR.JK", "AMRT.JK", "KLBF.JK",
-        "PTBA.JK", "PGAS.JK", "ANTM.JK", "INDF.JK", "ICBP.JK"
+        "BBRI.JK", "TLKM.JK", "ASII.JK", "GOTO.JK", "BMRI.JK", 
+        "BBNI.JK", "ADRO.JK", "UNVR.JK", "AMRT.JK", "KLBF.JK"
     ]
 
 def jalankan_pemindaian():
+    # === TES KONEKSI MANDATORI ===
+    # Baris ini dipaksa jalan duluan untuk membuktikan token & ID Anda 100% bekerja!
+    kirim_radar_telegram("🤖 *ABO Scanner Terhubung!* Memulai pemindaian bursa malam ini...")
+    
     daftar_saham = muat_daftar_saham()
     print("🚀 Starting technical calculation process...")
     
@@ -56,13 +58,13 @@ def jalankan_pemindaian():
             harga_sekarang = df_analisis['Close'].iloc[-1]
             min_bandwidth_20h = df_analisis['Bandwidth'].tail(20).min()
             
-            # AMAN! Batas dilonggarkan ke 0.40 biar PASTI lolos dan ngirim notif malam ini!
-            if bandwidth_sekarang <= 0.40 or bandwidth_sekarang == min_bandwidth_20h:
+            # Saringan dilonggarkan maksimal agar memperbesar peluang lolos
+            if bandwidth_sekarang <= 0.60 or bandwidth_sekarang == min_bandwidth_20h:
                 volume_sekarang = df_analisis['Volume'].iloc[-1]
                 rata_volume_20h = df_analisis['Volume'].tail(20).mean()
                 
                 status_vol = "Volume Mengering (Konsolidasi)"
-                if volume_sekarang > (rata_volume_20h * 1.2):
+                if volume_sekarang > (rata_volume_20h * 1.1):
                     status_vol = "🔥 VOLUME SPIKE! Siap terbang!"
                 
                 clean_name = kode_saham.replace(".JK", "")
@@ -80,7 +82,8 @@ def jalankan_pemindaian():
         except Exception as err:
             print(f"⚠️ Error reading ticker {kode_saham}: {err}")
             
-    print(f"🏁 Pemindaian selesai. Total {sinyal_ditemukan} sinyal dikirim ke Telegram!")
+    # Laporan penutup ke Telegram
+    kirim_radar_telegram(f"🏁 *Pemindaian Selesai.* Menemukan {sinyal_ditemukan} saham potensial.")
 
 if __name__ == "__main__":
     jalankan_pemindaian()
