@@ -1,15 +1,66 @@
-import os
-import requests
+"""
+==========================================
+ABO SCANNER
+MAIN SCANNER ENGINE
+Version 2.0
+==========================================
+"""
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+from data import DataEngine
+from signal import SignalEngine
+from score import ScoreEngine
 
-def kirim_telegram(pesan):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    data = {
-        "chat_id": CHAT_ID,
-        "text": pesan
-    }
-    requests.post(url, data=data)
 
-kirim_telegram("✅ ABO Scanner aktif. GitHub berhasil terhubung ke Telegram!")
+class Scanner:
+
+    def __init__(self):
+
+        self.data = DataEngine()
+        self.signal = SignalEngine()
+
+    def scan(self):
+
+        hasil = []
+
+        semua = self.data.ambil_semua()
+
+        print(f"\nTotal saham berhasil dibaca : {len(semua)}\n")
+
+        for kode, df in semua.items():
+
+            score = ScoreEngine()
+
+            try:
+
+                if self.signal.cek_sideways(df):
+                    score.tambah(25, "Sideways")
+
+                if self.signal.cek_breakout(df):
+                    score.tambah(20, "Breakout")
+
+                if self.signal.cek_volume(df):
+                    score.tambah(20, "Volume Spike")
+
+                if self.signal.cek_ema(df):
+                    score.tambah(10, "EMA Bullish")
+
+                if self.signal.cek_transaksi(df):
+                    score.tambah(15, "Nilai Transaksi Besar")
+
+                hasil.append({
+                    "kode": kode,
+                    "score": score.hasil()["score"],
+                    "alasan": score.hasil()["alasan"]
+                })
+
+            except Exception as e:
+
+                print(kode, e)
+
+        hasil = sorted(
+            hasil,
+            key=lambda x: x["score"],
+            reverse=True
+        )
+
+        return hasil
