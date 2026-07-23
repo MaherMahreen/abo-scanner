@@ -64,7 +64,7 @@ def jalankan_pemindaian():
             if df_analisis is None:
                 continue
             bandwidth_sekarang = df_analisis['Bandwidth'].iloc[-1]
-            harga_sekarang = df_analisis['Close'].iloc[-1]
+            if bandwidth_sekarang <= 0.05 or bandwidth_sekarang == min_bandwidth_20h:
             min_bandwidth_20h = df_analisis['Bandwidth'].tail(20).min()
             if bandwidth_sekarang <= 0.05 or bandwidth_sekarang == min_bandwidth_20h:
                 volume_sekarang = df_analisis['Volume'].iloc[-1]
