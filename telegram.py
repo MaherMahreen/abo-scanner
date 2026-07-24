@@ -1,12 +1,12 @@
 import requests
 
-TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAHy8NYFG6wL7PaZ6FbYo-kElMRcH6YuRx4"
+TELEGRAM_TOKEN_LANGSUNG = "8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc"
 CHAT_ID_LANGSUNG = "8690860489"
 
 def kirim_radar_telegram(pesan):
-    url = f"https://telegram.org{TELEGRAM_TOKEN_LANGSUNG}/sendMessage"
+    url = f"https://telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
     payload = {
-        "chat_id": str(CHAT_ID_LANGSUNG),
+        "chat_id": str("8690860489"),
         "text": pesan
     }
     try:
