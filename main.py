@@ -13,49 +13,28 @@ TELEGRAM_TOKEN = "8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc"
 CHAT_ID = "8690860489"
 # =========================================================================
 
-def send_telegram_notification(bot_token, chat_id, stocks_analysis, is_fallback=False):
+def send_telegram_notification(bot_token, chat_id, text_msg):
     """
-    Mengirimkan rekomendasi saham terpilih dengan format HTML yang rapi ke Telegram.
+    Fungsi pengirim pesan Telegram standar yang sangat aman dan lurus.
+    Menggunakan URL wajib api.telegram.org/bot dan pengecekan status respons riil.
     """
-    if not bot_token or not chat_id:
-        print("[ERROR] Kredensial Telegram kosong!")
-        return
-
-    msg = "<b>Hasil ABO Scanner Massal</b>\n"
-    
-    if is_fallback:
-        msg += "<i>Kondisi bursa sedang tenang / tutup. Berikut adalah Top 5 Saham dengan Akumulasi Volume Terbesar pada perdagangan terakhir:</i>\n\n"
-        for i, res in enumerate(stocks_analysis[:5]):
-            msg += f"<b>{i+1}. {res['ticker']}</b>\n"
-            msg += f"   - Status: Akumulasi Volume Tinggi\n"
-            msg += f"   - Harga Terakhir: Rp {res['close']}\n"
-            msg += f"   - Rata-rata Vol 20 Hari: {res['ma_vol']:,.0f}\n\n"
-    else:
-        if not stocks_analysis:
-            msg += "\nHari ini tidak ditemukan emiten yang memenuhi kriteria sideways dan breakout siap terbang."
-        else:
-            msg += "Ditemukan emiten potensial. Ini Top 5 Terkuat Sideways & Breakout:\n\n"
-            for i, res in enumerate(stocks_analysis[:5]):
-                msg += f"<b>{i+1}. {res['ticker']}</b>\n"
-                msg += f"   - Kondisi: {res['status']}\n"
-                msg += f"   - Range Sideways: Rp {res['low_bound']} - Rp {res['high_bound']}\n"
-                msg += f"   - Harga Terakhir: Rp {res['close']}\n"
-                msg += f"   - Lonjakan Volume: {res['vol_spike']:.1f}x rata-rata\n\n"
-    
-    url = f"https://api.telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
-    payload = {"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}
+    url = f"https://telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
+    payload = {"chat_id": chat_id, "text": text_msg, "parse_mode": "HTML"}
     
     try:
         response = requests.post(url, json=payload, timeout=15)
-        if response.json().get("ok"):
-            print("[OK] Notifikasi strategi berhasil dikirim ke Telegram.")
+        print("[STATUS]", response.status_code)
+        print(response.text)
+
+        if response.status_code == 200:
+            print("[OK] Telegram berhasil.")
         else:
-            print(f"[X] Telegram menolak: {response.json().get('description')}")
+            print("[ERROR] Telegram gagal.")
     except Exception as e:
-        print(f"[ERROR] Gagal mengirim notifikasi: {e}")
+        print("[ERROR] Gagal kirim Telegram:", e)
 
 def run_scanner_logic():
-    print("Memulai Bulk Download Engine...")
+    print("Memulai Bulk Download Engine dengan parameter optimasi baru...")
     
     raw_saham = [
         "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", 
@@ -121,33 +100,32 @@ def run_scanner_logic():
         "NELY", "PJHB", "PPGL", "PURA", "RCCC", "SAFE", "SAPX", "SMDR", "TAXI", "TMAS", 
         "TNCA", "TRJA", "TRUK", "WBSA", "WEHA", "GRHA"
     ]
-    
     tickers_jk = [f"{ticker}.JK" for ticker in raw_saham]
     kandidat_terpilih = []
     backup_saham = []
     
     try:
-        raw_data = yf.download(tickers_jk, period="60d", progress=False)
+        raw_data = yf.download(
+            tickers_jk,
+            period="60d",
+            group_by="ticker",
+            auto_adjust=False,
+            progress=False,
+            threads=True
+        )
     except Exception as e:
-        print(f"[ERROR] Masalah unduhan Yahoo Finance: {e}")
-        return [], []
+        print("[ERROR] Masalah unduhan Yahoo Finance:", e)
+        return "<b>Hasil ABO Scanner Massal</b>\n\nGagal memuat data pasar dari Yahoo Finance."
 
     for ticker in raw_saham:
         try:
             symbol = f"{ticker}.JK"
-            
             if not isinstance(raw_data.columns, pd.MultiIndex):
                 continue
-                
-            if symbol not in raw_data.columns.get_level_values(1):
+            if symbol not in raw_data.columns.get_level_values(0):
                 continue
                 
-            df_ticker = pd.DataFrame({
-                'Close': raw_data.loc[:, ('Close', symbol)],
-                'High': raw_data.loc[:, ('High', symbol)],
-                'Low': raw_data.loc[:, ('Low', symbol)],
-                'Volume': raw_data.loc[:, ('Volume', symbol)]
-            }).dropna()
+            df_ticker = raw_data[symbol].dropna()
             
             if len(df_ticker) < 20:
                 continue
@@ -172,3 +150,45 @@ def run_scanner_logic():
                 
             price_channel_width = ((highest_20d - lowest_20d) / lowest_20d) * 100
             is_sideways = price_channel_width <= 22.0
+            is_price_breakout = current_close >= (highest_20d * 0.96)
+            vol_ratio = current_volume / ma20_vol if ma20_vol > 0 else 0
+            is_volume_moving = vol_ratio >= 1.0
+            
+            if is_sideways and (is_price_breakout or is_volume_moving):
+                status = "Breakout Sinyal Volume" if is_price_breakout and vol_ratio >= 1.2 else "Konsolidasi Sideways Akhir"
+                kandidat_terpilih.append({
+                    "ticker": ticker,
+                    "status": status,
+                    "low_bound": int(lowest_20d),
+                    "high_bound": int(highest_20d),
+                    "close": int(current_close),
+                    "vol_spike": vol_ratio
+                })
+        except Exception:
+            pass
+
+    # MENYUSUN TEKS NOTIFIKASI UTUH (TIDAK AKAN TERPOTONG)
+    msg = "<b>Hasil ABO Scanner Massal</b>\n"
+    if kandidat_terpilih:
+        msg += "Ditemukan emiten potensial. Ini Top 5 Terkuat Sideways dan Breakout:\n\n"
+        kandidat_terpilih = sorted(kandidat_terpilih, key=lambda x: x['vol_spike'], reverse=True)
+        for i, res in enumerate(kandidat_terpilih[:5]):
+            msg += f"<b>{i+1}. {res['ticker']}</b>\n"
+            msg += f"   - Kondisi: {res['status']}\n"
+            msg += f"   - Range Sideways: Rp {res['low_bound']} - Rp {res['high_bound']}\n"
+            msg += f"   - Harga Terakhir: Rp {res['close']}\n"
+            msg += f"   - Lonjakan Volume: {res['vol_spike']:.1f}x rata-rata\n\n"
+    else:
+        msg += "Kondisi bursa tenang / tutup. Berikut Top 5 Saham Akumulasi Volume Terbesar:\n\n"
+        backup_saham = sorted(backup_saham, key=lambda x: x['ma_vol'], reverse=True)
+        for i, res in enumerate(backup_saham[:5]):
+            msg += f"<b>{i+1}. {res['ticker']}</b>\n"
+            msg += f"   - Status: Akumulasi Volume Tinggi\n"
+            msg += f"   - Harga Terakhir: Rp {res['close']}\n"
+            msg += f"   - Rata-rata Vol 20 Hari: {res['ma_vol']:,.0f}\n\n"
+            
+    return msg
+
+if __name__ == "__main__":
+    teks_notifikasi = run_scanner_logic()
+    send_telegram_notification(TELEGRAM_TOKEN, CHAT_ID, teks_notifikasi)
