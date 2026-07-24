@@ -13,7 +13,7 @@ CHAT_ID_LANGSUNG = "8690860489"
 def kirim_radar_telegram(pesan):
     # JALUR URL DAN PAYLOAD YANG SUDAH DIPERBAIKI 100% BENAR
     url = f"https://telegram.org/bot8567909596:AAHy8NYFG6wL7PaZ6FbYo-kElMRcH6YuRx4/sendMessage"
-    payload = {"chat_id": str(8690860489), "text": pesan, "parse_mode": "Markdown"}
+    payload = {"chat_id": str("8690860489"), "text": pesan, "parse_mode": "Markdown"}
     try:
         response = requests.post(url, json=payload, timeout=10)
         return response.status_code == 200
