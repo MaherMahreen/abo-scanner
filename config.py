@@ -3,7 +3,7 @@
 ABO SCANNER PRO
 Enterprise Trading Engine for Indonesian Sharia Stocks
 Configuration Center - Part 1: Core & Data Engine
-Version : 2.0.0
+Version : 2.0.0 (Validated for Commit)
 =========================================================
 """
 
@@ -31,15 +31,16 @@ ENABLE_MARKET_FILTER = True
 # =========================================================
 # DATA SOURCE & DOWNLOAD ENGINE
 # =========================================================
-# API Redundancy Institusional: 'YAHOO' atau 'IDX_API'
+# Menggunakan Yahoo sebagai basis utama, cadangan dinonaktifkan sementara
 PRIMARY_DATA_SOURCE = "YAHOO"
-FALLBACK_DATA_SOURCE = "IDX_API"
+FALLBACK_DATA_SOURCE = None
 
-PERIOD = "6mo"
+# Dinaikkan ke 1 tahun agar Support/Resistance dan indikator tren jauh lebih stabil
+PERIOD = "1y"
 INTERVAL = "1d"
 
-# Wajib False agar level Support/Resistance di chart sesuai orderbook bursa riil
-AUTO_ADJUST = False
+# Menggunakan harga penyesuaian agar tidak terganggu lompatan harga akibat Stock Split
+AUTO_ADJUST = True
 
 # Jeda antar request (detik) untuk menghindari blokir rate limit API
 REQUEST_DELAY = 1.0      
@@ -55,7 +56,7 @@ SIDEWAYS_RANGE = 0.08      # 8% rentang konsolidasi harga
 # =========================================================
 # VOLUME ANALYSIS
 # =========================================================
-VOLUME_SPIKE = 2.0         # Benar-benar 2x lipat dari rata-rata volume 20 hari
+VOLUME_SPIKE = 1.5         # 1.5x rata-rata 20 hari (Taktis: Menangkap akumulasi awal bandar)
 
 # =========================================================
 # BREAKOUT
@@ -154,7 +155,7 @@ WATCH_PUBLIC_EXPOSE_DAYS = 14
 # =========================================================
 # ABO SCORING MATRIX
 # =========================================================
-MIN_SCORE_ALERT = 70      # Batas bawah kelayakan (Selaras dengan Grade C)
+MIN_SCORE_ALERT = 80      # Diperketat: Hanya kandidat kuat (Grade B ke atas) yang lolos ke Telegram
 
 # Grade Level
 GRADE_A = 90
@@ -180,7 +181,7 @@ TARGET_ATR_MULTIPLIER = 4.0
 
 # Perlindungan risiko bursa harian
 MAX_DAILY_LOSS_LIMIT = -10.0   # Persen batasan menjauhi area ARB harian
-MAX_ATR_PERCENTAGE = 0.15      # Maksimum volatilitas harian 15% (menyaring gorengan liar)
+MAX_ATR_PERCENTAGE = 0.08      # Diperketat ke 8%: Menyaring dan mengeliminasi saham gorengan liar
 
 # =========================================================
 # TELEGRAM BOT INTERFACE
@@ -191,7 +192,7 @@ TELEGRAM_CHAT_ID = ""        # Isi dengan Chat ID Anda
 TELEGRAM_PARSE_MODE = "HTML"
 TELEGRAM_TIMEOUT = 15         # detik
 TELEGRAM_RETRY = 3            # jumlah percobaan kirim ulang
-TELEGRAM_BULK_SEND_DELAY = 0.05  # Jeda milidetik antar-pesan agar terhindar dari rate limit
+TELEGRAM_BULK_SEND_DELAY = 0.5  # Diperlonggar ke 0.5 detik agar aman dari pemblokiran rate limit Telegram
 
 # =========================================================
 # RADAR SCHEDULER (WIB)
