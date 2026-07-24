@@ -33,7 +33,7 @@ def send_telegram_notification(bot_token, chat_id, stocks_analysis):
             msg += f"   - Harga Terakhir: Rp {res['close']}\n"
             msg += f"   - Lonjakan Volume: {res['vol_spike']:.1f}x rata-rata\n\n"
     
-    url = f"https://telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
+    url = f"https://api.telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
     payload = {"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}
     
     try:
