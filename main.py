@@ -33,7 +33,7 @@ def send_telegram_notification(bot_token, chat_id, stocks_analysis):
             msg += f"   • Harga Terakhir: Rp {res['close']}\n"
             msg += f"   • Lonjakan Volume: {res['vol_spike']:.1f}x lipat rata-rata\n\n"
     
-    url = f"https://telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
+    url = f"https://telegram.org{bot_token}/sendMessage"
     payload = {"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}
     
     try:
@@ -46,45 +46,36 @@ def send_telegram_notification(bot_token, chat_id, stocks_analysis):
         print(f"[ERROR] Gagal mengirim notifikasi: {e}")
 
 
-def analyze_sideways_and_breakout(ticker_symbol):
+def hitung_analisis_breakout(ticker_symbol):
     """
     Menganalisis apakah sebuah saham sedang sideways lama dan menunjukkan tanda breakout volume.
     """
     try:
-        # Unduh data 100 hari bursa terakhir (setara ~5 bulan untuk melihat pola sideways lama)
+        # Mengunduh data historis
         ticker = yf.Ticker(f"{ticker_symbol}.JK")
         df = ticker.history(period="100d")
         
         if len(df) < 40:
             return None
             
-        # 1. Hitung indikator dasar
         df['MA20_Vol'] = df['Volume'].rolling(window=20).mean()
         
-        # Ambil data kondisi sekarang (hari terakhir) dan historis 30 hari ke belakang
         current_close = int(df['Close'].iloc[-1])
         current_volume = df['Volume'].iloc[-1]
         avg_volume_20d = df['MA20_Vol'].iloc[-1]
         
-        # 30 hari ke belakang sebelum hari ini untuk mengukur kestabilan rentang harga (Sideways)
         hist_30d = df.iloc[-31:-1]
         highest_30d = hist_30d['High'].max()
         lowest_30d = hist_30d['Low'].min()
         
-        # Mengukur lebar kotak sideways dalam persen
         price_channel_width = ((highest_30d - lowest_30d) / lowest_30d) * 100
         
-        # Syarat 1: Sideways lama (Rentang harga 30 hari terakhir sangat sempit / berkisar di bawah 12%)
+        # Saringan Sideways & Breakout
         is_sideways = price_channel_width <= 12
-        
-        # Syarat 2: Breakout (Harga menembus batas atas kotak sideways 30 hari)
         is_price_breakout = current_close >= (highest_30d * 0.99)
-        
-        # Syarat 3: Konfirmasi Volume (Volume hari ini melebihi 1.5x rata-rata 20 hari terakhir)
         vol_ratio = current_volume / avg_volume_20d if avg_volume_20d > 0 else 0
         is_volume_spike = vol_ratio >= 1.5
         
-        # Jika memenuhi kriteria konsolidasi ketat dan ada akumulasi volume siap terbang
         if is_sideways and (is_price_breakout or is_volume_spike):
             status = "Breakout Konfirmasi Volume" if is_price_breakout and is_volume_spike else "Akumulasi Sideways Akhir"
             return {
@@ -106,7 +97,8 @@ def run_scanner_logic():
     """
     print("Memulai Score & Signal Engine: Pemindaian Sideways & Breakout...")
     
-    raw_saham = ["BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", 
+    raw_saham = [
+        "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", 
         "AKRA", "ARII", "ATLA", "BBRM", "BESS", "BOAT", "BSML", "BSSR", "BULL", "BUMI", 
         "BYAN", "CANI", "CGAS", "COAL", "DEWA", "DSSA", "DWGL", "ELSA", "ENRG", "FIRE", 
         "GEMS", "HRUM", "IATA", "INDY", "ITMA", "ITMG", "KKGI", "KOPI", "MAHA", "MBAP", 
@@ -166,4 +158,24 @@ def run_scanner_logic():
         "PPRE", "PTPP", "PTPW", "SMKM", "SSIA", "SUPR", "TAMA", "TLKM", "TOTL", "WEGE", 
         "AKSI", "ASSA", "BIRD", "BLOG", "BLTA", "CMPP", "ELPI", "GIAA", "GTRA", "HAIS", 
         "HATM", "HELI", "JAYA", "KJEN", "KLAS", "LAJU", "LOPI", "LRNA", "MIRA", "MITI", 
-        "NELY", "PJHB", "PPGL", "PURA", "RCCC", "SAFE", "SAPX", "SMDR", "TAXI", "TMAS",]
+        "NELY", "PJHB", "PPGL", "PURA", "RCCC", "SAFE", "SAPX", "SMDR", "TAXI", "TMAS", 
+        "TNCA", "TRJA", "TRUK", "WBSA", "WEHA", "GRHA"
+    ]
+    
+    kandidat_terpilih = []
+    
+    for code in raw_saham:
+        analysis = hitung_analisis_breakout(code)
+        if analysis:
+            kandidat_terpilih.append(analysis)
+            print(f"[FOUND] {code} cocok dengan kriteria.")
+            
+        time.sleep(0.2)
+        
+    kandidat_terpilih = sorted(kandidat_terpilih, key=lambda x: x['vol_spike'], reverse=True)
+    top_5 = kandidat_terpilih[:5]
+    return top_5
+
+if __name__ == "__main__":
+    saham_siap_terbang = run_scanner_logic()
+    send_telegram_notification(TELEGRAM_TOKEN, CHAT_ID, saham_siap_terbang)
