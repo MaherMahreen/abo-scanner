@@ -1,9 +1,12 @@
-name: scan-market
+name: Siap To The Moon or Lower Earth
 
 on:
-  workflow_dispatch: # Mengaktifkan tombol "Run workflow" manual di dashboard GitHub
+  workflow_dispatch: # Mengaktifkan tombol manual di dashboard GitHub
   schedule:
-    - cron: '0 9 * * 1-5' # Berjalan otomatis Senin - Jumat jam 16:00 WIB (09:00 UTC)
+    # Berjalan otomatis setiap Senin-Jumat jam 00:00 UTC (07:00 WIB)
+    - cron: '0 0 * * 1-5'
+    # Berjalan otomatis setiap Senin-Jumat jam 09:00 UTC (16:00 WIB)
+    - cron: '0 9 * * 1-5'
 
 jobs:
   scan-market:
