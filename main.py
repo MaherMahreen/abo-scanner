@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 # =========================================================================
-# 📝 PENGATURAN KREDENSIAL TELEGRAM
+# 📝 PENGATURAN KREDENSIAL TELEGRAM (SUDAH VALID)
 # =========================================================================
 TELEGRAM_TOKEN = "8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc"
 CHAT_ID = "8690860489"
@@ -26,6 +26,7 @@ def send_telegram_notification(bot_token, chat_id, stocks_analysis):
     else:
         msg = "<b>📊 Hasil ABO Scanner Massal</b>\n"
         msg += f"🎯 <i>Ditemukan {len(stocks_analysis)} emiten potensial. Ini Top 5 Terkuat:</i>\n\n"
+        # Ambil maksimal 5 emiten teratas
         for i, res in enumerate(stocks_analysis[:5]):
             msg += f"<b>{i+1}. {res['ticker']}</b>\n"
             msg += f"   • Kondisi: {res['status']}\n"
@@ -46,7 +47,7 @@ def send_telegram_notification(bot_token, chat_id, stocks_analysis):
         print(f"[ERROR] Gagal mengirim notifikasi: {e}")
 
 def run_scanner_logic():
-    print("Memulai Bulk Download Engine dengan Normalisasi Tabel Bertingkat...")
+    print("Memulai Bulk Download Engine dengan Kebal Kebal Multi-Index...")
     
     raw_saham = [
         "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", 
@@ -114,55 +115,51 @@ def run_scanner_logic():
     ]
     
     tickers_jk = [f"{ticker}.JK" for ticker in raw_saham]
+    kandidat_terpilih = []
     
     try:
-        # Ambil data pasar historis secara sekaligus
+        # Ambil data pasar historis bursa 60 hari terakhir
         raw_data = yf.download(tickers_jk, period="60d", progress=False)
-        
-        # OBLIGATORI: Meluruskan tabel kolom bertingkat (Multi-Index) yfinance agar bisa dibaca normal
-        raw_data.columns = ['_'.join(col).strip() for col in raw_data.columns.values]
     except Exception as e:
         print(f"[ERROR] Masalah unduhan Yahoo Finance: {e}")
         return []
 
-    kandidat_terpilih = []
-    
+    # METODE KHUSUS: Mengurai Multi-Index secara eksplisit tanpa menggabungkan string manual
+    # Ini menjamin kode kebal terhadap perubahan internal versi yfinance terbaru
     for ticker in raw_saham:
         try:
-            # Ambil kolom yang tepat berdasarkan nama kombinasi hasil pelurusan tabel
-            close_col = f"Close_{ticker}.JK"
-            high_col = f"High_{ticker}.JK"
-            low_col = f"Low_{ticker}.JK"
-            vol_col = f"Volume_{ticker}.JK"
+            symbol = f"{ticker}.JK"
             
-            # Validasi ketersediaan data di dalam hasil unduhan bulk
-            if close_col not in raw_data.columns:
+            # Ambil data spesifik per emiten langsung dari hirarki objek data
+            if symbol not in raw_data.columns.get_level_values(1 if isinstance(raw_data.columns, pd.MultiIndex) else 0):
                 continue
                 
-            # Bersihkan baris data kosong dari emiten terkait
-            df_ticker = raw_data[[close_col, high_col, low_col, vol_col]].dropna()
+            if isinstance(raw_data.columns, pd.MultiIndex):
+                df_ticker = pd.DataFrame({
+                    'Close': raw_data.loc[:, ('Close', symbol)],
+                    'High': raw_data.loc[:, ('High', symbol)],
+                    'Low': raw_data.loc[:, ('Low', symbol)],
+                    'Volume': raw_data.loc[:, ('Volume', symbol)]
+                }).dropna()
+            else:
+                # Fallback jika yfinance mengembalikan data satu saham tunggal biasa
+                df_ticker = raw_data[['Close', 'High', 'Low', 'Volume']].dropna()
             
             if len(df_ticker) < 20:
                 continue
                 
-            # Hitung Moving Average Volume 20 hari
-            ma20_vol = df_ticker[vol_col].rolling(window=20).mean().iloc[-1]
+            # Hitung indikator Moving Average Volume 20 hari bursa
+            ma20_vol = df_ticker['Volume'].rolling(window=20).mean().iloc[-1]
+            current_close = df_ticker['Close'].iloc[-1]
+            current_volume = df_ticker['Volume'].iloc[-1]
             
-            current_close = df_ticker[close_col].iloc[-1]
-            current_volume = df_ticker[vol_col].iloc[-1]
-            
-            # Data historis 20 hari ke belakang sebelum hari ini untuk mengukur rentang Sideways
+            # Analisis kotak konsolidasi Sideways 20 hari ke belakang sebelum hari ini
             hist_20d = df_ticker.iloc[-21:-1]
-            highest_20d = hist_20d[high_col].max()
-            lowest_20d = hist_20d[low_col].min()
+            highest_20d = hist_20d['High'].max()
+            lowest_20d = hist_20d['Low'].min()
             
             if lowest_20d == 0 or pd.isna(lowest_20d):
                 continue
                 
-            # Saringan Longgar: Mengukur lebar ruang konsolidasi sideways dalam % (Batas aman: 20%)
-            price_channel_width = ((highest_20d - lowest_20d) / lowest_20d) * 100
-            is_sideways = price_channel_width <= 20.0
-            
-            # Saringan Pemicu Terbang: Mengukur apakah harga mendekati atau menembus batas atas
-            is_price_breakout = current_close >= (highest_20d * 0.97)
-            
+            # 📈 FORMULA SARINGAN PINTAR
+            # 1. Lebar rentang harga sideways di bawah 22% (Sangat ideal untuk pergerakan saham Indonesia)
