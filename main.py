@@ -2,6 +2,9 @@ import os
 import sys
 import time
 import requests
+import yfinance as yf
+import pandas as pd
+import numpy as np
 
 # =========================================================================
 # 📝 PENGATURAN KREDENSIAL TELEGRAM
@@ -10,89 +13,100 @@ TELEGRAM_TOKEN = "8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc"
 CHAT_ID = "8690860489"
 # =========================================================================
 
-def send_telegram_notification(bot_token, chat_id, stocks_list):
+def send_telegram_notification(bot_token, chat_id, stocks_analysis):
     """
-    Fungsi untuk mengirimkan daftar saham ke Telegram secara aman.
-    Otomatis membagi pesan menjadi beberapa bagian jika melebihi batas karakter Telegram.
+    Mengirimkan rekomendasi 5 saham terpilih dengan format HTML yang rapi.
     """
     if not bot_token or not chat_id:
-        print("[ERROR] Token Bot atau Chat ID Telegram kosong! Periksa kembali variabel Anda.")
+        print("[ERROR] Kredensial Telegram kosong!")
         return
 
-    if not stocks_list:
-        print("[INFO] Tidak ada saham yang ditemukan untuk dikirim.")
-        return
+    if not stocks_analysis:
+        msg = "<b>📊 Hasil ABO Scanner Massal</b>\n\n🎯 Hari ini tidak ditemukan emiten yang memenuhi kriteria sideways & breakout siap terbang."
+    else:
+        msg = "<b>📊 Hasil ABO Scanner Massal</b>\n"
+        msg += "🎯 <i>Top 5 Emiten Sideways Lama & Siap Breakout (Terbang):</i>\n\n"
+        for i, res in enumerate(stocks_analysis):
+            msg += f"<b>{i+1}. {res['ticker']}</b>\n"
+            msg += f"   • Kondisi: {res['status']}\n"
+            msg += f"   • Range Sideways: Rp {res['low_bound']} - Rp {res['high_bound']}\n"
+            msg += f"   • Harga Terakhir: Rp {res['close']}\n"
+            msg += f"   • Lonjakan Volume: {res['vol_spike']:.1f}x lipat rata-rata\n\n"
+    
+    url = f"https://telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
+    payload = {"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}
+    
+    try:
+        response = requests.post(url, json=payload, timeout=15)
+        if response.json().get("ok"):
+            print("[OK] Notifikasi strategi breakout berhasil dikirim ke Telegram.")
+        else:
+            print(f"[X] Telegram menolak: {response.json().get('description')}")
+    except Exception as e:
+        print(f"[ERROR] Gagal mengirim notifikasi: {e}")
 
-    # 1. Format daftar saham menjadi teks per baris menggunakan format HTML yang stabil
-    lines = [f"{i+1}. {stock}" for i, stock in enumerate(stocks_list)]
-    
-    # 2. Bagi teks menjadi beberapa bagian (chunks) jika melebihi batas aman 3.000 karakter
-    MAX_CHARACTERS = 3000
-    chunks = []
-    current_chunk = "<b>📊 Hasil ABO Scanner Massal</b>\n\n"
-    
-    for line in lines:
-        if len(current_chunk) + len(line) + 1 > MAX_CHARACTERS:
-            chunks.append(current_chunk)
-            current_chunk = ""
-        current_chunk += line + "\n"
-    
-    if current_chunk:
-        chunks.append(current_chunk)
 
-    # 3. URL Format API Telegram yang benar
-    url = f"https://api.telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
-    
-    for index, chunk in enumerate(chunks):
-        payload = {
-            "chat_id": chat_id,
-            "text": chunk,
-            "parse_mode": "HTML"
-        }
+def analyze_sideways_and_breakout(ticker_symbol):
+    """
+    Menganalisis apakah sebuah saham sedang sideways lama dan menunjukkan tanda breakout volume.
+    """
+    try:
+        # Unduh data 100 hari bursa terakhir (setara ~5 bulan untuk melihat pola sideways lama)
+        ticker = yf.Ticker(f"{ticker_symbol}.JK")
+        df = ticker.history(period="100d")
         
-        try:
-            print(f"[INFO] Mengirim notifikasi bagian {index+1}/{len(chunks)}...")
-            response = requests.post(url, json=payload, timeout=15)
+        if len(df) < 40:
+            return None
             
-            # Cek status HTTP terlebih dahulu sebelum membaca JSON untuk menghindari error 'Expecting value'
-            if response.status_code != 200:
-                print(f"[X] Telegram menolak dengan Status Code: {response.status_code}")
-                print("[INFO] Mencoba mengirim ulang sebagai Plain Text (Teks Biasa)...")
-                
-                # Buat ulang chunk bersih tanpa tag HTML untuk kirim ulang
-                plain_chunk = chunk.replace("<b>", "").replace("</b>", "")
-                fallback_payload = {
-                    "chat_id": chat_id,
-                    "text": plain_chunk
-                }
-                
-                response = requests.post(url, json=fallback_payload, timeout=15)
-            
-            # Baca hasil respon
-            try:
-                response_data = response.json()
-                if response_data.get("ok"):
-                    print(f"[OK] Bagian {index+1} berhasil dikirim ke Telegram.")
-                else:
-                    print(f"[ERROR] Telegram menolak: {response_data.get('description')}")
-            except Exception:
-                print(f"[ERROR] Server Telegram mengembalikan respon non-JSON. Isi mentah: {response.text}")
-                
-            # Jeda 1.5 detik antar pesan untuk menghindari rate-limit (spam block) dari Telegram
-            time.sleep(1.5)
-            
-        except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Masalah koneksi jaringan ke API Telegram: {e}")
+        # 1. Hitung indikator dasar
+        df['MA20_Vol'] = df['Volume'].rolling(window=20).mean()
+        
+        # Ambil data kondisi sekarang (hari terakhir) dan historis 30 hari ke belakang
+        current_close = int(df['Close'].iloc[-1])
+        current_volume = df['Volume'].iloc[-1]
+        avg_volume_20d = df['MA20_Vol'].iloc[-1]
+        
+        # 30 hari ke belakang sebelum hari ini untuk mengukur kestabilan rentang harga (Sideways)
+        hist_30d = df.iloc[-31:-1]
+        highest_30d = hist_30d['High'].max()
+        lowest_30d = hist_30d['Low'].min()
+        
+        # Mengukur lebar kotak sideways dalam persen
+        price_channel_width = ((highest_30d - lowest_30d) / lowest_30d) * 100
+        
+        # Syarat 1: Sideways lama (Rentang harga 30 hari terakhir sangat sempit / berkisar di bawah 12%)
+        is_sideways = price_channel_width <= 12
+        
+        # Syarat 2: Breakout (Harga menembus batas atas kotak sideways 30 hari)
+        is_price_breakout = current_close >= (highest_30d * 0.99)
+        
+        # Syarat 3: Konfirmasi Volume (Volume hari ini melebihi 1.5x rata-rata 20 hari terakhir)
+        vol_ratio = current_volume / avg_volume_20d if avg_volume_20d > 0 else 0
+        is_volume_spike = vol_ratio >= 1.5
+        
+        # Jika memenuhi kriteria konsolidasi ketat dan ada akumulasi volume siap terbang
+        if is_sideways and (is_price_breakout or is_volume_spike):
+            status = "Breakout Konfirmasi Volume" if is_price_breakout and is_volume_spike else "Akumulasi Sideways Akhir"
+            return {
+                "ticker": ticker_symbol,
+                "status": status,
+                "low_bound": int(lowest_30d),
+                "high_bound": int(highest_30d),
+                "close": current_close,
+                "vol_spike": vol_ratio
+            }
+    except Exception:
+        pass
+    return None
 
 
 def run_scanner_logic():
     """
-    Mengembalikan daftar kode saham yang telah ditentukan untuk diproses.
+    Melakukan pemindaian massal terhadap daftar emiten untuk mencari 5 kandidat terbaik.
     """
-    print("# FIXED: Diarahkan langsung ke main.py agar seluruh modul Score & Signal Engine aktif nyata!")
-    print("Memicu jembatan notifikasi...")
+    print("Memulai Score & Signal Engine: Pemindaian Sideways & Breakout...")
     
-    hasil_saham = [
+    raw_saham = [
         "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", 
         "AKRA", "ARII", "ATLA", "BBRM", "BESS", "BOAT", "BSML", "BSSR", "BULL", "BUMI", 
         "BYAN", "CANI", "CGAS", "COAL", "DEWA", "DSSA", "DWGL", "ELSA", "ENRG", "FIRE", 
@@ -154,16 +168,3 @@ def run_scanner_logic():
         "AKSI", "ASSA", "BIRD", "BLOG", "BLTA", "CMPP", "ELPI", "GIAA", "GTRA", "HAIS", 
         "HATM", "HELI", "JAYA", "KJEN", "KLAS", "LAJU", "LOPI", "LRNA", "MIRA", "MITI", 
         "NELY", "PJHB", "PPGL", "PURA", "RCCC", "SAFE", "SAPX", "SMDR", "TAXI", "TMAS", 
-        "TNCA", "TRJA", "TRUK", "WBSA", "WEHA", "GRHA"
-    ]
-    
-    print(f"Berhasil memuat {len(hasil_saham)} saham.")
-    return hasil_saham
-
-
-if __name__ == "__main__":
-    # 1. Jalankan proses pemindaian saham utama
-    daftar_saham_terdeteksi = run_scanner_logic()
-    
-    # 2. Eksekusi pengiriman notifikasi massal ke Telegram menggunakan kredensial di atas
-    send_telegram_notification(TELEGRAM_TOKEN, CHAT_ID, daftar_saham_terdeteksi)
