@@ -13,7 +13,7 @@ TELEGRAM_TOKEN = "8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc"
 CHAT_ID = "8690860489"
 # =========================================================================
 
-def send_telegram_notification(bot_token, chat_id, stocks_analysis):
+def send_telegram_notification(bot_token, chat_id, stocks_analysis, is_fallback=False):
     """
     Mengirimkan rekomendasi saham terpilih dengan format HTML yang rapi ke Telegram.
     """
@@ -21,25 +21,34 @@ def send_telegram_notification(bot_token, chat_id, stocks_analysis):
         print("[ERROR] Kredensial Telegram kosong!")
         return
 
-    if not stocks_analysis:
-        msg = "<b>Hasil ABO Scanner Massal</b>\n\nHari ini tidak ditemukan emiten yang memenuhi kriteria sideways dan breakout siap terbang."
-    else:
-        msg = "<b>Hasil ABO Scanner Massal</b>\n"
-        msg += f"Ditemukan {len(stocks_analysis)} emiten potensial. Ini Top 5 Terkuat:\n\n"
+    msg = "<b>Hasil ABO Scanner Massal</b>\n"
+    
+    if is_fallback:
+        msg += "<i>Kondisi bursa sedang tenang / tutup. Berikut adalah Top 5 Saham dengan Akumulasi Volume Terbesar pada perdagangan terakhir:</i>\n\n"
         for i, res in enumerate(stocks_analysis[:5]):
             msg += f"<b>{i+1}. {res['ticker']}</b>\n"
-            msg += f"   - Kondisi: {res['status']}\n"
-            msg += f"   - Range Sideways: Rp {res['low_bound']} - Rp {res['high_bound']}\n"
+            msg += f"   - Status: Akumulasi Volume Tinggi\n"
             msg += f"   - Harga Terakhir: Rp {res['close']}\n"
-            msg += f"   - Lonjakan Volume: {res['vol_spike']:.1f}x rata-rata\n\n"
+            msg += f"   - Rata-rata Vol 20 Hari: {res['ma_vol']:,.0f}\n\n"
+    else:
+        if not stocks_analysis:
+            msg += "\nHari ini tidak ditemukan emiten yang memenuhi kriteria sideways dan breakout siap terbang."
+        else:
+            msg += "🎯 <i>Ditemukan emiten potensial. Ini Top 5 Terkuat Sideways & Breakout:</i>\n\n"
+            for i, res in enumerate(stocks_analysis[:5]):
+                msg += f"<b>{i+1}. {res['ticker']}</b>\n"
+                msg += f"   - Kondisi: {res['status']}\n"
+                msg += f"   - Range Sideways: Rp {res['low_bound']} - Rp {res['high_bound']}\n"
+                msg += f"   - Harga Terakhir: Rp {res['close']}\n"
+                msg += f"   - Lonjakan Volume: {res['vol_spike']:.1f}x rata-rata\n\n"
     
-    url = f"https://api.telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
+    url = f"https://api.telegram.org8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
     payload = {"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}
     
     try:
         response = requests.post(url, json=payload, timeout=15)
         if response.json().get("ok"):
-            print("[OK] Notifikasi strategi breakout berhasil dikirim ke Telegram.")
+            print("[OK] Notifikasi strategi berhasil dikirim ke Telegram.")
         else:
             print(f"[X] Telegram menolak: {response.json().get('description')}")
     except Exception as e:
@@ -115,12 +124,13 @@ def run_scanner_logic():
     
     tickers_jk = [f"{ticker}.JK" for ticker in raw_saham]
     kandidat_terpilih = []
+    backup_saham = []
     
     try:
         raw_data = yf.download(tickers_jk, period="60d", progress=False)
     except Exception as e:
         print(f"[ERROR] Masalah unduhan Yahoo Finance: {e}")
-        return []
+        return [], []
 
     for ticker in raw_saham:
         try:
@@ -146,6 +156,14 @@ def run_scanner_logic():
             current_close = df_ticker['Close'].iloc[-1]
             current_volume = df_ticker['Volume'].iloc[-1]
             
+            # Kumpulkan data cadangan berdasarkan volume rata-rata tertinggi
+            if ma20_vol > 0 and not pd.isna(current_close):
+                backup_saham.append({
+                    "ticker": ticker,
+                    "close": int(current_close),
+                    "ma_vol": ma20_vol
+                })
+            
             hist_20d = df_ticker.iloc[-21:-1]
             highest_20d = hist_20d['High'].max()
             lowest_20d = hist_20d['Low'].min()
@@ -154,21 +172,3 @@ def run_scanner_logic():
                 continue
                 
             price_channel_width = ((highest_20d - lowest_20d) / lowest_20d) * 100
-            is_sideways = price_channel_width <= 22.0
-            is_price_breakout = current_close >= (highest_20d * 0.96)
-            vol_ratio = current_volume / ma20_vol if ma20_vol > 0 else 0
-            is_volume_moving = vol_ratio >= 1.0
-            
-            if is_sideways and (is_price_breakout or is_volume_moving):
-                status = "Breakout Sinyal Volume" if is_price_breakout and vol_ratio >= 1.2 else "Konsolidasi Sideways Akhir"
-                kandidat_terpilih.append({
-                    "ticker": ticker,
-                    "status": status,
-                    "low_bound": int(lowest_20d),
-                    "high_bound": int(highest_20d),
-                    "close": int(current_close),
-                    "vol_spike": vol_ratio
-                })
-        except Exception:
-            continue
-            
