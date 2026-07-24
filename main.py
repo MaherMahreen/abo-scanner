@@ -18,7 +18,7 @@ def send_telegram_notification(bot_token, chat_id, text_msg):
     Fungsi pengirim pesan Telegram standar yang sangat aman dan lurus.
     Menggunakan URL wajib api.telegram.org/bot dan pengecekan status respons riil.
     """
-    url = f"https://telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
+    url = f"https://api.telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
     payload = {"chat_id": chat_id, "text": text_msg, "parse_mode": "HTML"}
     
     try:
