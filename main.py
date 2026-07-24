@@ -15,7 +15,7 @@ CHAT_ID = "8690860489"
 
 def send_telegram_notification(bot_token, chat_id, stocks_analysis):
     """
-    Mengirimkan rekomendasi 5 saham terpilih dengan format HTML yang rapi.
+    Mengirimkan rekomendasi saham terpilih dengan format HTML yang rapi ke Telegram.
     """
     if not bot_token or not chat_id:
         print("[ERROR] Kredensial Telegram kosong!")
@@ -25,7 +25,7 @@ def send_telegram_notification(bot_token, chat_id, stocks_analysis):
         msg = "<b>📊 Hasil ABO Scanner Massal</b>\n\n🎯 Hari ini tidak ditemukan emiten yang memenuhi kriteria sideways & breakout siap terbang."
     else:
         msg = "<b>📊 Hasil ABO Scanner Massal</b>\n"
-        msg += f"🎯 <i>Mendapat {len(stocks_analysis)} emiten potensial. Ini Top 5 Terkuat:</i>\n\n"
+        msg += f"🎯 <i>Ditemukan {len(stocks_analysis)} emiten potensial. Ini Top 5 Terkuat:</i>\n\n"
         for i, res in enumerate(stocks_analysis[:5]):
             msg += f"<b>{i+1}. {res['ticker']}</b>\n"
             msg += f"   • Kondisi: {res['status']}\n"
@@ -46,7 +46,7 @@ def send_telegram_notification(bot_token, chat_id, stocks_analysis):
         print(f"[ERROR] Gagal mengirim notifikasi: {e}")
 
 def run_scanner_logic():
-    print("Memulai Bulk Download Engine: Mengunduh data pasar sekaligus...")
+    print("Memulai Bulk Download Engine dengan Normalisasi Tabel Bertingkat...")
     
     raw_saham = [
         "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", 
@@ -116,55 +116,53 @@ def run_scanner_logic():
     tickers_jk = [f"{ticker}.JK" for ticker in raw_saham]
     
     try:
-        # Mengunduh seluruh data saham sekaligus (Bulk) untuk menghindari limit IP
-        data = yf.download(tickers_jk, period="100d", group_by='ticker', progress=False)
+        # Ambil data pasar historis secara sekaligus
+        raw_data = yf.download(tickers_jk, period="60d", progress=False)
+        
+        # OBLIGATORI: Meluruskan tabel kolom bertingkat (Multi-Index) yfinance agar bisa dibaca normal
+        raw_data.columns = ['_'.join(col).strip() for col in raw_data.columns.values]
     except Exception as e:
-        print(f"[ERROR] Gagal mengunduh bulk data dari Yahoo: {e}")
+        print(f"[ERROR] Masalah unduhan Yahoo Finance: {e}")
         return []
 
     kandidat_terpilih = []
     
     for ticker in raw_saham:
         try:
-            df = data[f"{ticker}.JK"].dropna(subset=['Close'])
-            if len(df) < 40:
+            # Ambil kolom yang tepat berdasarkan nama kombinasi hasil pelurusan tabel
+            close_col = f"Close_{ticker}.JK"
+            high_col = f"High_{ticker}.JK"
+            low_col = f"Low_{ticker}.JK"
+            vol_col = f"Volume_{ticker}.JK"
+            
+            # Validasi ketersediaan data di dalam hasil unduhan bulk
+            if close_col not in raw_data.columns:
                 continue
                 
-            df['MA20_Vol'] = df['Volume'].rolling(window=20).mean()
+            # Bersihkan baris data kosong dari emiten terkait
+            df_ticker = raw_data[[close_col, high_col, low_col, vol_col]].dropna()
             
-            current_close = df['Close'].iloc[-1]
-            current_volume = df['Volume'].iloc[-1]
-            avg_volume_20d = df['MA20_Vol'].iloc[-1]
-            
-            if pd.isna(current_close) or pd.isna(current_volume) or pd.isna(avg_volume_20d):
+            if len(df_ticker) < 20:
                 continue
                 
-            hist_30d = df.iloc[-31:-1]
-            highest_30d = hist_30d['High'].max()
-            lowest_30d = hist_30d['Low'].min()
+            # Hitung Moving Average Volume 20 hari
+            ma20_vol = df_ticker[vol_col].rolling(window=20).mean().iloc[-1]
             
-            if pd.isna(highest_30d) or pd.isna(lowest_30d) or lowest_30d == 0:
+            current_close = df_ticker[close_col].iloc[-1]
+            current_volume = df_ticker[vol_col].iloc[-1]
+            
+            # Data historis 20 hari ke belakang sebelum hari ini untuk mengukur rentang Sideways
+            hist_20d = df_ticker.iloc[-21:-1]
+            highest_20d = hist_20d[high_col].max()
+            lowest_20d = hist_20d[low_col].min()
+            
+            if lowest_20d == 0 or pd.isna(lowest_20d):
                 continue
                 
-            # Pelonggaran indikator: Sideways maksimal 15% (sebelumnya 12%)
-            price_channel_width = ((highest_30d - lowest_30d) / lowest_30d) * 100
-            is_sideways = price_channel_width <= 15
+            # Saringan Longgar: Mengukur lebar ruang konsolidasi sideways dalam % (Batas aman: 20%)
+            price_channel_width = ((highest_20d - lowest_20d) / lowest_20d) * 100
+            is_sideways = price_channel_width <= 20.0
             
-            is_price_breakout = current_close >= (highest_30d * 0.98)
-            vol_ratio = current_volume / avg_volume_20d if avg_volume_20d > 0 else 0
-            is_volume_spike = vol_ratio >= 1.2  # Diturunkan ke 1.2 agar lebih sensitif
+            # Saringan Pemicu Terbang: Mengukur apakah harga mendekati atau menembus batas atas
+            is_price_breakout = current_close >= (highest_20d * 0.97)
             
-            if is_sideways and (is_price_breakout or is_volume_spike):
-                status = "Breakout Volume" if is_price_breakout and is_volume_spike else "Akumulasi Sideways"
-                kandidat_terpilih.append({
-                    "ticker": ticker,
-                    "status": status,
-                    "low_bound": int(lowest_30d),
-                    "high_bound": int(highest_30d),
-                    "close": int(current_close),
-                    "vol_spike": vol_ratio
-                })
-        except Exception:
-            continue
-            
-    # Urutkan berdasarkan kekuatan lonjakan volume akumulasi
