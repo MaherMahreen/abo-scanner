@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 # =========================================================================
-# 📝 PENGATURAN KREDENSIAL TELEGRAM (SUDAH VALID)
+# PENGATURAN KREDENSIAL TELEGRAM (SUDAH VALID)
 # =========================================================================
 TELEGRAM_TOKEN = "8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc"
 CHAT_ID = "8690860489"
@@ -22,17 +22,16 @@ def send_telegram_notification(bot_token, chat_id, stocks_analysis):
         return
 
     if not stocks_analysis:
-        msg = "<b>📊 Hasil ABO Scanner Massal</b>\n\n🎯 Hari ini tidak ditemukan emiten yang memenuhi kriteria sideways & breakout siap terbang."
+        msg = "<b>Hasil ABO Scanner Massal</b>\n\nHari ini tidak ditemukan emiten yang memenuhi kriteria sideways dan breakout siap terbang."
     else:
-        msg = "<b>📊 Hasil ABO Scanner Massal</b>\n"
-        msg += f"🎯 <i>Ditemukan {len(stocks_analysis)} emiten potensial. Ini Top 5 Terkuat:</i>\n\n"
-        # Ambil maksimal 5 emiten teratas
+        msg = "<b>Hasil ABO Scanner Massal</b>\n"
+        msg += f"Ditemukan {len(stocks_analysis)} emiten potensial. Ini Top 5 Terkuat:\n\n"
         for i, res in enumerate(stocks_analysis[:5]):
             msg += f"<b>{i+1}. {res['ticker']}</b>\n"
-            msg += f"   • Kondisi: {res['status']}\n"
-            msg += f"   • Range Sideways: Rp {res['low_bound']} - Rp {res['high_bound']}\n"
-            msg += f"   • Harga Terakhir: Rp {res['close']}\n"
-            msg += f"   • Lonjakan Volume: {res['vol_spike']:.1f}x rata-rata\n\n"
+            msg += f"   - Kondisi: {res['status']}\n"
+            msg += f"   - Range Sideways: Rp {res['low_bound']} - Rp {res['high_bound']}\n"
+            msg += f"   - Harga Terakhir: Rp {res['close']}\n"
+            msg += f"   - Lonjakan Volume: {res['vol_spike']:.1f}x rata-rata\n\n"
     
     url = f"https://telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
     payload = {"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}
@@ -47,7 +46,7 @@ def send_telegram_notification(bot_token, chat_id, stocks_analysis):
         print(f"[ERROR] Gagal mengirim notifikasi: {e}")
 
 def run_scanner_logic():
-    print("Memulai Bulk Download Engine dengan Kebal Kebal Multi-Index...")
+    print("Memulai Bulk Download Engine...")
     
     raw_saham = [
         "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", 
@@ -118,42 +117,35 @@ def run_scanner_logic():
     kandidat_terpilih = []
     
     try:
-        # Ambil data pasar historis bursa 60 hari terakhir
         raw_data = yf.download(tickers_jk, period="60d", progress=False)
     except Exception as e:
         print(f"[ERROR] Masalah unduhan Yahoo Finance: {e}")
         return []
 
-    # METODE KHUSUS: Mengurai Multi-Index secara eksplisit tanpa menggabungkan string manual
-    # Ini menjamin kode kebal terhadap perubahan internal versi yfinance terbaru
     for ticker in raw_saham:
         try:
             symbol = f"{ticker}.JK"
             
-            # Ambil data spesifik per emiten langsung dari hirarki objek data
-            if symbol not in raw_data.columns.get_level_values(1 if isinstance(raw_data.columns, pd.MultiIndex) else 0):
+            if not isinstance(raw_data.columns, pd.MultiIndex):
                 continue
                 
-            if isinstance(raw_data.columns, pd.MultiIndex):
-                df_ticker = pd.DataFrame({
-                    'Close': raw_data.loc[:, ('Close', symbol)],
-                    'High': raw_data.loc[:, ('High', symbol)],
-                    'Low': raw_data.loc[:, ('Low', symbol)],
-                    'Volume': raw_data.loc[:, ('Volume', symbol)]
-                }).dropna()
-            else:
-                # Fallback jika yfinance mengembalikan data satu saham tunggal biasa
-                df_ticker = raw_data[['Close', 'High', 'Low', 'Volume']].dropna()
+            if symbol not in raw_data.columns.get_level_values(1):
+                continue
+                
+            df_ticker = pd.DataFrame({
+                'Close': raw_data.loc[:, ('Close', symbol)],
+                'High': raw_data.loc[:, ('High', symbol)],
+                'Low': raw_data.loc[:, ('Low', symbol)],
+                'Volume': raw_data.loc[:, ('Volume', symbol)]
+            }).dropna()
             
             if len(df_ticker) < 20:
                 continue
                 
-            # Hitung indikator Moving Average Volume 20 hari bursa
             ma20_vol = df_ticker['Volume'].rolling(window=20).mean().iloc[-1]
             current_close = df_ticker['Close'].iloc[-1]
             current_volume = df_ticker['Volume'].iloc[-1]
             
-            # Analisis kotak konsolidasi Sideways 20 hari ke belakang sebelum hari ini
             hist_20d = df_ticker.iloc[-21:-1]
             highest_20d = hist_20d['High'].max()
             lowest_20d = hist_20d['Low'].min()
@@ -161,5 +153,22 @@ def run_scanner_logic():
             if lowest_20d == 0 or pd.isna(lowest_20d):
                 continue
                 
-            # 📈 FORMULA SARINGAN PINTAR
-            # 1. Lebar rentang harga sideways di bawah 22% (Sangat ideal untuk pergerakan saham Indonesia)
+            price_channel_width = ((highest_20d - lowest_20d) / lowest_20d) * 100
+            is_sideways = price_channel_width <= 22.0
+            is_price_breakout = current_close >= (highest_20d * 0.96)
+            vol_ratio = current_volume / ma20_vol if ma20_vol > 0 else 0
+            is_volume_moving = vol_ratio >= 1.0
+            
+            if is_sideways and (is_price_breakout or is_volume_moving):
+                status = "Breakout Sinyal Volume" if is_price_breakout and vol_ratio >= 1.2 else "Konsolidasi Sideways Akhir"
+                kandidat_terpilih.append({
+                    "ticker": ticker,
+                    "status": status,
+                    "low_bound": int(lowest_20d),
+                    "high_bound": int(highest_20d),
+                    "close": int(current_close),
+                    "vol_spike": vol_ratio
+                })
+        except Exception:
+            continue
+            
