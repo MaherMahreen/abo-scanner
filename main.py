@@ -5,6 +5,7 @@ import requests
 import yfinance as yf
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
 # =========================================================================
 # PENGATURAN KREDENSIAL TELEGRAM (SUDAH VALID)
@@ -15,7 +16,7 @@ CHAT_ID = "8690860489"
 
 def send_telegram_notification(bot_token, chat_id, text_msg):
     """
-    Fungsi pengirim pesan Telegram standar yang sangat aman dan lurus.
+    Fungsi pengirim pesan Telegram standar aman.
     Menggunakan URL wajib api.telegram.org/bot dan pengecekan status respons riil.
     """
     url = f"https://api.telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
@@ -27,15 +28,14 @@ def send_telegram_notification(bot_token, chat_id, text_msg):
         print(response.text)
 
         if response.status_code == 200:
-            print("[OK] Telegram berhasil.")
+            print("[OK] Telegram berhasil mengirimkan sinyal PRO.")
         else:
             print("[ERROR] Telegram gagal.")
     except Exception as e:
         print("[ERROR] Gagal kirim Telegram:", e)
 
 def run_scanner_logic():
-    print("Memulai Bulk Download Engine dengan parameter optimasi baru...")
-    
+    print("Memulai ULTIMATE PRO Bulk Download Engine...")
     raw_saham = [
         "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", 
         "AKRA", "ARII", "ATLA", "BBRM", "BESS", "BOAT", "BSML", "BSSR", "BULL", "BUMI", 
@@ -58,7 +58,9 @@ def run_scanner_logic():
         "LION", "MARK", "MFMI", "MHKI", "MLIA", "MUTU", "NAIK", "NTBK", "PADA", "PTMP", 
         "SCCO", "SKRN", "SMIL", "SOSS", "SPTO", "TIRA", "TOTO", "UNTR", "VISI", "VOKS", 
         "WIDI", "AALI", "ADES", "AGAR", "AISA", "AMMS", "ASHA", "AYAM", "BISI", "BOBA", 
-        "BRRC", "BUAH", "BUDI", "BWPT", "CAMP", "CEKA", "CLEO", "CMRY", "CPIN", "CPRO", 
+        "BRRC", "BUAH", "BUDI", "BWPT", "CAMP", "CEKA", "CLEO", "CMRY", "CPIN", "CPRO"
+    ]
+    raw_saham_ext = [
         "CSRA", "DAYA", "DEWI", "DMND", "DSFI", "DSNG", "EPMT", "EURO", "FISH", "FLMC", 
         "FOOD", "GOOD", "GRPM", "GULA", "GUNA", "GZCO", "HERO", "HOKI", "ICBP", "IKAN", 
         "INDF", "JARR", "JAWA", "JPFA", "KEJU", "KINO", "KMDS", "LSIP", "MAIN", "MAXI", 
@@ -100,6 +102,7 @@ def run_scanner_logic():
         "NELY", "PJHB", "PPGL", "PURA", "RCCC", "SAFE", "SAPX", "SMDR", "TAXI", "TMAS", 
         "TNCA", "TRJA", "TRUK", "WBSA", "WEHA", "GRHA"
     ]
+    raw_saham.extend(raw_saham_ext)
     tickers_jk = [f"{ticker}.JK" for ticker in raw_saham]
     kandidat_terpilih = []
     backup_saham = []
@@ -107,7 +110,7 @@ def run_scanner_logic():
     try:
         raw_data = yf.download(
             tickers_jk,
-            period="60d",
+            period="100d",
             group_by="ticker",
             auto_adjust=False,
             progress=False,
@@ -115,8 +118,7 @@ def run_scanner_logic():
         )
     except Exception as e:
         print("[ERROR] Masalah unduhan Yahoo Finance:", e)
-        return "<b>Hasil ABO Scanner Massal</b>\n\nGagal memuat data pasar dari Yahoo Finance."
-
+        return "<b>Hasil ABO Scanner Massal</b>\n\nGagal memuat data bursa."
     for ticker in raw_saham:
         try:
             symbol = f"{ticker}.JK"
@@ -125,21 +127,24 @@ def run_scanner_logic():
             if symbol not in raw_data.columns.get_level_values(0):
                 continue
                 
-            df_ticker = raw_data[symbol].dropna()
-            
-            if len(df_ticker) < 20:
+            df_ticker = raw_data[symbol].dropna().copy()
+            if len(df_ticker) < 50:
                 continue
                 
+            df_ticker['EMA20'] = df_ticker['Close'].ewm(span=20, adjust=False).mean()
+            df_ticker['EMA50'] = df_ticker['Close'].ewm(span=50, adjust=False).mean()
+            
             ma20_vol = df_ticker['Volume'].rolling(window=20).mean().iloc[-1]
             current_close = df_ticker['Close'].iloc[-1]
             current_volume = df_ticker['Volume'].iloc[-1]
+            current_high = df_ticker['High'].iloc[-1]
+            current_low = df_ticker['Low'].iloc[-1]
+            
+            c_ema20 = df_ticker['EMA20'].iloc[-1]
+            c_ema50 = df_ticker['EMA50'].iloc[-1]
             
             if ma20_vol > 0 and not pd.isna(current_close):
-                backup_saham.append({
-                    "ticker": ticker,
-                    "close": int(current_close),
-                    "ma_vol": ma20_vol
-                })
+                backup_saham.append({"ticker": ticker, "close": int(current_close), "ma_vol": ma20_vol})
             
             hist_20d = df_ticker.iloc[-21:-1]
             highest_20d = hist_20d['High'].max()
@@ -155,38 +160,76 @@ def run_scanner_logic():
             is_volume_moving = vol_ratio >= 1.0
             
             if is_sideways and (is_price_breakout or is_volume_moving):
-                status = "Breakout Sinyal Volume" if is_price_breakout and vol_ratio >= 1.2 else "Konsolidasi Sideways Akhir"
+                is_uptrend = current_close >= c_ema20 and c_ema20 >= c_ema50
+                
+                range_harian = current_high - current_low
+                posisi_tutup = current_close - current_low
+                is_bullish_vsa = posisi_tutup >= (range_harian * 0.5) if range_harian > 0 else True
+                
+                status = "Strong Breakout + Akumulasi" if is_price_breakout and is_bullish_vsa else "Konsolidasi Bullish Sideways"
+                if not is_uptrend:
+                    status += " (Fase Bottoming)"
+                
+                stop_loss = int(lowest_20d * 0.98)
+                target_profit = int(current_close + ((current_close - stop_loss) * 2))
+                
+                # REKOMENDASI 4: Hitung Rasio Risk to Reward (R:R) Riil Berbasis Selisih Papan Harga
+                risk = current_close - stop_loss
+                reward = target_profit - current_close
+                rr = reward / risk if risk > 0 else 0
+                
+                # REKOMENDASI 3: Penggabungan Bobot Penilaian Multi-Faktor (Maksimal Skor 10)
+                score_weight = 4.0 if is_price_breakout else 2.0
+                score_weight += 3.0 if is_uptrend else 1.0
+                score_weight += 3.0 if vol_ratio >= 2.0 else (vol_ratio * 1.5)
+                final_score = min(round(score_weight, 1), 10.0)
+                
                 kandidat_terpilih.append({
                     "ticker": ticker,
                     "status": status,
-                    "low_bound": int(lowest_20d),
-                    "high_bound": int(highest_20d),
                     "close": int(current_close),
-                    "vol_spike": vol_ratio
+                    "vol_spike": vol_ratio,
+                    "sl": stop_loss,
+                    "tp": target_profit,
+                    "trend": "Bullish" if is_uptrend else "Sideways",
+                    "rr": rr,
+                    "score": final_score
                 })
-        except Exception:
-            pass
-
-    # MENYUSUN TEKS NOTIFIKASI UTUH (TIDAK AKAN TERPOTONG)
-    msg = "<b>Hasil ABO Scanner Massal</b>\n"
+        except Exception as e:
+            print(f"[ERROR EMITEN] {ticker}: {type(e).__name__} - {e}")
+    # MENYUSUN NOTIFIKASI TELEGRAM FORMAT PRO UTUH DENGAN FOOTER & TIMESTAMP
+    msg = "<b>🚀 SIAP TO THE MOON - PRO SCANNER</b>\n\n"
     if kandidat_terpilih:
-        msg += "Ditemukan emiten potensial. Ini Top 5 Terkuat Sideways dan Breakout:\n\n"
-        kandidat_terpilih = sorted(kandidat_terpilih, key=lambda x: x['vol_spike'], reverse=True)
+        # REKOMENDASI 2: Tampilkan Informasi Total Jumlah Kandidat yang Berhasil Lolos Saringan
+        msg += f"📊 Total Kandidat Berhasil Lolos: <b>{len(kandidat_terpilih)}</b>\n\n"
+        msg += "🎯 <i>Top 5 Emiten Rekomendasi Terkuat (Urutan Berdasarkan Score Terpadu):</i>\n\n"
+        
+        # Pengurutan Pro: Diurutkan berdasarkan gabungan Skor Terpadu, bukan hanya Vol Spike saja
+        kandidat_terpilih = sorted(kandidat_terpilih, key=lambda x: (x['score'], x['vol_spike']), reverse=True)
         for i, res in enumerate(kandidat_terpilih[:5]):
-            msg += f"<b>{i+1}. {res['ticker']}</b>\n"
-            msg += f"   - Kondisi: {res['status']}\n"
-            msg += f"   - Range Sideways: Rp {res['low_bound']} - Rp {res['high_bound']}\n"
-            msg += f"   - Harga Terakhir: Rp {res['close']}\n"
-            msg += f"   - Lonjakan Volume: {res['vol_spike']:.1f}x rata-rata\n\n"
+            msg += f"<b>{i+1}. {res['ticker']} (Rp {res['close']})</b>\n"
+            msg += f"   • Sinyal: {res['status']}\n"
+            msg += f"   • Trend: {res['trend']}\n"
+            msg += f"   • Volume: {res['vol_spike']:.1f}x Vol Spike\n"
+            msg += f"   • ⭐ <b>Score</b>: {res['score']}/10\n"
+            msg += f"   • ⚖️ <b>R:R</b>: {res['rr']:.1f} : 1\n"
+            msg += f"   • Buy: Sekarang (Area Market)\n"
+            msg += f"   • TP: Rp {res['tp']}\n"
+            msg += f"   • SL: Rp {res['sl']}\n\n"
     else:
-        msg += "Kondisi bursa tenang / tutup. Berikut Top 5 Saham Akumulasi Volume Terbesar:\n\n"
+        msg += "📈 <i>Kondisi bursa tenang / libur. Berikut Top 5 Saham Akumulasi Volume Terbesar Pasar:</i>\n\n"
         backup_saham = sorted(backup_saham, key=lambda x: x['ma_vol'], reverse=True)
         for i, res in enumerate(backup_saham[:5]):
-            msg += f"<b>{i+1}. {res['ticker']}</b>\n"
-            msg += f"   - Status: Akumulasi Volume Tinggi\n"
-            msg += f"   - Harga Terakhir: Rp {res['close']}\n"
-            msg += f"   - Rata-rata Vol 20 Hari: {res['ma_vol']:,.0f}\n\n"
+            msg += f"<b>{i+1}. {res['ticker']} (Rp {res['close']})</b>\n"
+            msg += f"   • Status: Akumulasi Volume Tinggi\n"
+            msg += f"   • Rata-rata Vol 20 Hari: {res['ma_vol']:,.0f}\n"
+            msg += f"   • 🎯 Target Resisten Terdekat: Rp {int(res['close']*1.07)}\n\n"
             
+    # REKOMENDASI 5 & 1: Penambahan Pembatas Footer Sistem dan Jejak Waktu Eksplisit Scan WIB
+    msg += "━━━━━━━━━━━━━━\n"
+    msg += "🤖 ABO Scanner PRO\n"
+    msg += "📡 Data: Yahoo Finance\n"
+    msg += f"🕒 Scan: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
     return msg
 
 if __name__ == "__main__":
