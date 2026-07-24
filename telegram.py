@@ -12,9 +12,9 @@ def kirim_radar_telegram(pesan):
     Sends radar alert notifications directly to your Telegram bot.
     """
     # Memperbaiki total URL API yang hancur sebelumnya
-    url = f"https://telegram.org{TELEGRAM_TOKEN_LANGSUNG}/sendMessage"
+    url = f"https://telegram.org/bot8567909596:AAHy8NYFG6wL7PaZ6FbYo-kElMRcH6YuRx4/sendMessage"
     payload = {
-        "chat_id": str(CHAT_ID_LANGSUNG),
+        "chat_id": str("8690860489"),
         "text": pesan,
         "parse_mode": "Markdown"
     }
