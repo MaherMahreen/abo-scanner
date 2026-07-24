@@ -30,7 +30,6 @@ def kirim_radar_telegram(pesan):
     except Exception as e:
         print("Gagal kirim Telegram:", e)
         return False
-
 def muat_saham_dari_csv():
     nama_file = "saham_syariah.csv"
     if not os.path.exists(nama_file):
