@@ -11,13 +11,24 @@ CHAT_ID_LANGSUNG = "8690860489"
 # =====================================================================
 
 def kirim_radar_telegram(pesan):
-    url = f"https://telegram.org{TELEGRAM_TOKEN_LANGSUNG}/sendMessage"
-    payload = {"chat_id": str(CHAT_ID_LANGSUNG), "text": pesan, "parse_mode": "Markdown"}
+    url = "https://api.telegram.org/bot8567909596:AAHy8NYFG6wL7PaZ6FbYo-kElMRcH6YuRx4/sendMessage"
+
+    payload = {
+        "chat_id": "8690860489",
+        "text": pesan,
+        "parse_mode": "Markdown"
+    }
+
     try:
         response = requests.post(url, json=payload, timeout=10)
+
+        print("Status :", response.status_code)
+        print("Response:", response.text)
+
         return response.status_code == 200
+
     except Exception as e:
-        print(f"Gagal kirim Telegram: {e}")
+        print("Gagal kirim Telegram:", e)
         return False
 
 def muat_saham_dari_csv():
