@@ -13,10 +13,10 @@ CHAT_ID_LANGSUNG = "8690860489"
 # =====================================================================
 # KONFIGURASI PARAMETER TRADING AMAN (ADAPTASI DARI config.py)
 # =====================================================================
-SIDEWAYS_RANGE = 0.15          # Toleransi lebar bandwidth sideways maks 15%
-BREAKOUT_LOOKBACK = 20         # Melihat batas tertinggi harga 20 hari ke belakang
-VOLUME_SPIKE_RATIO = 1.3       # Volume hari ini wajib 1.3x lipat rata-rata
-MIN_VALUE_TRANSACTION = 500000000 # Minimal nilai transaksi harian Rp 500 Juta (Likuid)
+SIDEWAYS_RANGE = 0.45          # Dilonggarkan ke 45% biar banyak yang lolos
+BREAKOUT_LOOKBACK = 20         
+VOLUME_SPIKE_RATIO = 1.3       
+MIN_VALUE_TRANSACTION = 1000000 # Diturunkan ke Rp 1 Juta saja untuk pengetesan
 # =====================================================================
 
 def kirim_radar_telegram(pesan):
