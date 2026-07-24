@@ -26,8 +26,8 @@ def send_telegram_notification(bot_token, chat_id, stocks_list):
     # 1. Format daftar saham menjadi teks per baris menggunakan format HTML yang stabil
     lines = [f"{i+1}. {stock}" for i, stock in enumerate(stocks_list)]
     
-    # 2. Bagi teks menjadi beberapa bagian (chunks) jika melebihi batas aman 3.500 karakter
-    MAX_CHARACTERS = 3500
+    # 2. Bagi teks menjadi beberapa bagian (chunks) jika melebihi batas aman 3.000 karakter
+    MAX_CHARACTERS = 3000
     chunks = []
     current_chunk = "<b>📊 Hasil ABO Scanner Massal</b>\n\n"
     
@@ -53,21 +53,30 @@ def send_telegram_notification(bot_token, chat_id, stocks_list):
         try:
             print(f"[INFO] Mengirim notifikasi bagian {index+1}/{len(chunks)}...")
             response = requests.post(url, json=payload, timeout=15)
-            response_data = response.json()
             
-            # Jika Telegram menolak karena kesalahan parsing HTML, gunakan fallback ke teks biasa
-            if not response_data.get("ok"):
-                print(f"[X] Telegram menolak pesan: {response_data.get('description')}")
-                if "can't parse" in response_data.get('description', '').lower():
-                    print("[INFO] Mengirim ulang sebagai Plain Text tanpa HTML format...")
-                    payload.pop("parse_mode", None)
-                    response = requests.post(url, json=payload, timeout=15)
-                    response_data = response.json()
-                    
-                if not response_data.get("ok"):
-                    print(f"[ERROR] Gagal total mengirimkan bagian {index+1}.")
-            else:
-                print(f"[OK] Bagian {index+1} berhasil dikirim ke Telegram.")
+            # Cek status HTTP terlebih dahulu sebelum membaca JSON untuk menghindari error 'Expecting value'
+            if response.status_code != 200:
+                print(f"[X] Telegram menolak dengan Status Code: {response.status_code}")
+                print("[INFO] Mencoba mengirim ulang sebagai Plain Text (Teks Biasa)...")
+                
+                # Buat ulang chunk bersih tanpa tag HTML untuk kirim ulang
+                plain_chunk = chunk.replace("<b>", "").replace("</b>", "")
+                fallback_payload = {
+                    "chat_id": chat_id,
+                    "text": plain_chunk
+                }
+                
+                response = requests.post(url, json=fallback_payload, timeout=15)
+            
+            # Baca hasil respon
+            try:
+                response_data = response.json()
+                if response_data.get("ok"):
+                    print(f"[OK] Bagian {index+1} berhasil dikirim ke Telegram.")
+                else:
+                    print(f"[ERROR] Telegram menolak: {response_data.get('description')}")
+            except Exception:
+                print(f"[ERROR] Server Telegram mengembalikan respon non-JSON. Isi mentah: {response.text}")
                 
             # Jeda 1.5 detik antar pesan untuk menghindari rate-limit (spam block) dari Telegram
             time.sleep(1.5)
@@ -83,7 +92,6 @@ def run_scanner_logic():
     print("# FIXED: Diarahkan langsung ke main.py agar seluruh modul Score & Signal Engine aktif nyata!")
     print("Memicu jembatan notifikasi...")
     
-    # Menampung seluruh kode saham yang Anda kirimkan
     hasil_saham = [
         "BBMI", "BRIS", "BTPS", "JMAS", "PNBS", "SPOT", "AADI", "ABMM", "ADMR", "ADRO", 
         "AKRA", "ARII", "ATLA", "BBRM", "BESS", "BOAT", "BSML", "BSSR", "BULL", "BUMI", 
