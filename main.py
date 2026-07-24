@@ -6,7 +6,7 @@ import requests
 # =========================================================================
 # 📝 PENGATURAN KREDENSIAL TELEGRAM
 # =========================================================================
-TELEGRAM_TOKEN = "8567909596:AAHy8NYFG6wL7PaZ6FbYo-kElMRcH6YuRx4"
+TELEGRAM_TOKEN = "8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc"
 CHAT_ID = "8690860489"
 # =========================================================================
 
@@ -41,7 +41,7 @@ def send_telegram_notification(bot_token, chat_id, stocks_list):
         chunks.append(current_chunk)
 
     # 3. URL Format API Telegram yang benar
-    url = f"https://telegram.org/bot8567909596:AAHy8NYFG6wL7PaZ6FbYo-kElMRcH6YuRx4/sendMessage"
+    url = f"https://api.telegram.org/bot8567909596:AAFwit3UXmDVY7dn2qPjectOpN_1ywYeybc/sendMessage"
     
     for index, chunk in enumerate(chunks):
         payload = {
